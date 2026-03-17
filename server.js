@@ -1,6 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -25,90 +27,52 @@ app.get('/api/search', async (req, res) => {
     }
 
     try {
-        /*
-          NOT: Nexus Mods V1 REST API'sinde doğrudan kelime ile mod arama yeteneği (search keyword) bulunmuyor.
-          Bu nedenle "Trending" (Popüler) ve "Latest" (En Yeni) modları çekip Node.js tarafında kendimiz filtreliyoruz
-          (Yapay Zeka arama deneyimi sunabilmek için).
-        */
+        // Önceden "crawler.js" ile çekip kaydettiğimiz kendi veri tabanımızı (mods_db.json) kullanıyoruz!
+        const dbPath = path.join(__dirname, 'mods_db.json');
         
         let allMods = [];
 
-        if (gameDomain === 'all') {
-            // "Hiçbiri" seçildiyse popüler birkaç oyundan karışık trend modları çekelim
-            const topGames = ['skyrimspecialedition', 'fallout4', 'cyberpunk2077', 'stardewvalley'];
-            
-            const requests = topGames.map(game => 
-                axios.get(`https://api.nexusmods.com/v1/games/${game}/mods/trending.json`, {
-                    headers: { 'accept': 'application/json', 'apikey': apiKey }
-                }).catch(e => ({ data: [] }))
-            );
-            
-            const results = await Promise.all(requests);
-            
-            results.forEach((res, index) => {
-                if(res.data && Array.isArray(res.data)) {
-                    res.data.forEach(mod => {
-                        mod.category_name = topGames[index]; // Hangi oyundan geldiğini bildirmek için
-                        allMods.push(mod);
-                    });
-                }
-            });
-            
-            // Sadece trendleri karıştırarak (shuffle) gösterelim
-            allMods.sort(() => Math.random() - 0.5);
+        if (fs.existsSync(dbPath)) {
+            const dbContent = fs.readFileSync(dbPath, 'utf8');
+            allMods = JSON.parse(dbContent);
         } else {
-            const trendingRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/trending.json`, {
-                headers: { 'accept': 'application/json', 'apikey': apiKey }
-            });
-            
-            const latestRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_added.json`, {
-                headers: { 'accept': 'application/json', 'apikey': apiKey }
-            });
-            
-            const updatedRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_updated.json`, {
-                headers: { 'accept': 'application/json', 'apikey': apiKey }
-            });
-
-            // Üç listeyi birleştir
-            allMods = [...trendingRes.data, ...latestRes.data, ...updatedRes.data];
-        }
-        
-        // Tekrarlanan modları filtrele (aynı mod hem yeni, güncellenmiş hem trend olabilir)
-        const uniqueMods = [];
-        const seenIds = new Set();
-        for (const mod of allMods) {
-            if(!seenIds.has(mod.mod_id)) {
-                seenIds.add(mod.mod_id);
-                uniqueMods.push(mod);
-            }
+            return res.status(500).json({ error: 'Yerel veritabanı (mods_db.json) bulunamadı. Lütfen önce crawler.js dosyasını çalıştırın.' });
         }
 
-        // Kullanıcının aramasına (query) göre arkaplanda küçük bir yapay zeka/filtre simülasyonu:
+        // 1. Önce "Karışık (all)" değilse ve spesifik bir Oyun seçilmişse sadece o oyunun modlarını süz
+        if (gameDomain !== 'all') {
+            allMods = allMods.filter(mod => mod.domain_name === gameDomain || mod.category_name === gameDomain);
+        }
+
+        // 2. Kullanıcının aradığı kelimeyi (query) sitemizin yerel veritabanında arıyoruz (NLP/Metin Eşleştirme)
         const lowerQuery = query.toLowerCase();
-        let filteredMods = uniqueMods.filter(mod => 
-            (mod.name && mod.name.toLowerCase().includes(lowerQuery)) || 
-            (mod.summary && mod.summary.toLowerCase().includes(lowerQuery)) ||
-            (mod.description && mod.description.toLowerCase().includes(lowerQuery))
-        );
+        let filteredMods = allMods;
         
-        // Eğer aranan kelime hiç veriyle eşleşmediyse, boş dönmesin diye en azından 10-12 popüler mod önerelim
-        // (Sonuçta yapay zekamız 'benzer' şeyler de önermeli!)
-        if (filteredMods.length === 0) {
-            filteredMods = uniqueMods; 
+        // Eğer aranan kelime 2 karakterden uzun veya eşitse filtrelemeyi yap
+        if (lowerQuery.length >= 2) {
+            filteredMods = allMods.filter(mod => 
+                (mod.name && mod.name.toLowerCase().includes(lowerQuery)) || 
+                (mod.summary && mod.summary.toLowerCase().includes(lowerQuery)) ||
+                (mod.description && mod.description.toLowerCase().includes(lowerQuery))
+            );
+        }
+        
+        // Eğer hiçbir kelimeyle eşleşmediyse veya sistem yeni açıldıysa, 
+        // veri tabanındaki modlardan bir karmaşık liste yapıp vitrin gibi dökelim
+        if (filteredMods.length === 0 || lowerQuery.length < 2) {
+            filteredMods = allMods; 
         }
 
-        res.json({ mods: filteredMods });
+        // Sonuçları her seferinde aralarında hafif karıştırarak listele
+        filteredMods.sort(() => Math.random() - 0.5);
+
+        // Sistemin çok kasmasını engellemek için eğer geri dönen 300 sonuç falan varsa sadece ilk 60'ını (sayfalama ile) göster
+        res.json({ mods: filteredMods.slice(0, 60) });
 
     } catch (error) {
-        console.error("Nexus API'den veri çekerken hata oluştu:");
+        console.error("Yerel Veritabanı Arama Hatası:");
         console.error(error.message);
-        
-        // Eğer 401 hatası aldıysa API Key yanlıştır.
-        if(error.response && error.response.status === 401) {
-            res.status(401).json({ error: "API Anahtarı Geçersiz veya Yetkisiz!" });
-        } else {
-             res.status(500).json({ error: 'Sunucu tarafında modlar çekilirken bir hata oluştu.' });
-        }
+        res.status(500).json({ error: 'Sunucu tarafında yerel veritabanı aranırken bir hata oluştu.' });
     }
 });
 
