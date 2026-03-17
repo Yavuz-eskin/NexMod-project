@@ -10,10 +10,34 @@ require('dotenv').config();
 // Gerekli JWT ve Şifreleme Modülleri
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
+
+// Gemini AI Yapılandırması
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+async function translateQueryWithAI(userQuery) {
+    try {
+        const prompt = `Sen NexMod sitesinin zeki arama asistanısın. Kullanıcı Türkçe veya karışık bir dilde oyun modu arıyor. 
+        Görevin: Kullanıcının ne aramak istediğini anla ve bunu NexusMods veritabanında en iyi sonucu verecek profesyonel İngilizce mod terimlerine çevir.
+        Sadece İngilizce karşılığını döndür, açıklama yapma.
+        Örnek: "grafik geliştiren modlar" -> "graphics enhancement overhaul"
+        Örnek: "daha gerçekçi kılıçlar" -> "realistic swords weapon"
+        Örnek: "gökyüzü modu" -> "skybox weather atmosphere"
+        Kullanıcı Sorgusu: "${userQuery}"`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+    } catch (error) {
+        console.error("AI Çeviri Hatası:", error);
+        return userQuery; // Hata durumunda orijinaliyle devam et
+    }
+}
 
 // Front-end (HTML/JS) dosyamızın bu Node.js sunucusuna istek atabilmesi için CORS aktif edilir
 app.use(cors());
@@ -73,12 +97,20 @@ app.get('/api/search', async (req, res) => {
         }
 
         // 2. Kullanıcının aradığı kelimeyi (query) bulutta arıyoruz (NLP/Metin Eşleştirme)
-        const lowerQuery = query.toLowerCase();
+        let lowerQuery = query.toLowerCase();
+        let aiEnhancedQuery = lowerQuery;
+
+        // EĞER sorgu Türkçe karakterler içeriyorsa veya kullanıcı "ne istediğini" anlatıyorsa AI devreye girsin
+        if (lowerQuery.length >= 2) {
+            console.log(`🤖 AI Sorgu Analizi Başlıyor: "${lowerQuery}"`);
+            aiEnhancedQuery = await translateQueryWithAI(lowerQuery);
+            console.log(`✅ AI Sonucu: "${aiEnhancedQuery}"`);
+        }
         
         // Eğer aranan kelime 2 karakterden uzun veya eşitse filtrelemeyi yap
-        if (lowerQuery.length >= 2) {
-            // regex yerine Mod schema'sında oluşturduğumuz text indexini kullanıyoruz. API'den devasa hız kazandırır.
-            filterCondition.$text = { $search: lowerQuery };
+        if (aiEnhancedQuery.length >= 2) {
+            // Hem orijinal sorguyu hem AI çevirisini kullanarak daha geniş bir havuzda ara
+            filterCondition.$text = { $search: `${lowerQuery} ${aiEnhancedQuery}` };
         }
         
         // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
