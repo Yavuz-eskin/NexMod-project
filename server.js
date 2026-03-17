@@ -31,20 +31,47 @@ app.get('/api/search', async (req, res) => {
           (Yapay Zeka arama deneyimi sunabilmek için).
         */
         
-        const trendingRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/trending.json`, {
-            headers: { 'accept': 'application/json', 'apikey': apiKey }
-        });
-        
-        const latestRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_added.json`, {
-            headers: { 'accept': 'application/json', 'apikey': apiKey }
-        });
-        
-        const updatedRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_updated.json`, {
-            headers: { 'accept': 'application/json', 'apikey': apiKey }
-        });
+        let allMods = [];
 
-        // Üç listeyi birleştir
-        let allMods = [...trendingRes.data, ...latestRes.data, ...updatedRes.data];
+        if (gameDomain === 'all') {
+            // "Hiçbiri" seçildiyse popüler birkaç oyundan karışık trend modları çekelim
+            const topGames = ['skyrimspecialedition', 'fallout4', 'cyberpunk2077', 'stardewvalley'];
+            
+            const requests = topGames.map(game => 
+                axios.get(`https://api.nexusmods.com/v1/games/${game}/mods/trending.json`, {
+                    headers: { 'accept': 'application/json', 'apikey': apiKey }
+                }).catch(e => ({ data: [] }))
+            );
+            
+            const results = await Promise.all(requests);
+            
+            results.forEach((res, index) => {
+                if(res.data && Array.isArray(res.data)) {
+                    res.data.forEach(mod => {
+                        mod.category_name = topGames[index]; // Hangi oyundan geldiğini bildirmek için
+                        allMods.push(mod);
+                    });
+                }
+            });
+            
+            // Sadece trendleri karıştırarak (shuffle) gösterelim
+            allMods.sort(() => Math.random() - 0.5);
+        } else {
+            const trendingRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/trending.json`, {
+                headers: { 'accept': 'application/json', 'apikey': apiKey }
+            });
+            
+            const latestRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_added.json`, {
+                headers: { 'accept': 'application/json', 'apikey': apiKey }
+            });
+            
+            const updatedRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_updated.json`, {
+                headers: { 'accept': 'application/json', 'apikey': apiKey }
+            });
+
+            // Üç listeyi birleştir
+            allMods = [...trendingRes.data, ...latestRes.data, ...updatedRes.data];
+        }
         
         // Tekrarlanan modları filtrele (aynı mod hem yeni, güncellenmiş hem trend olabilir)
         const uniqueMods = [];

@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let allGamesList = [];
     let currentModsData = [];
     let currentModIndex = 0;
-    let currentGameDomain = "skyrimspecialedition";
+    let currentGameDomain = "all";
 
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener("click", () => {
@@ -32,11 +32,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Oyunları popülerliğe (indirme sayısına) göre sıralayalım
                 if (Array.isArray(games)) {
                     games.sort((a,b) => (b.downloads || 0) - (a.downloads || 0));
-                    allGamesList = games;
                     
-                    gameSearchInput.value = "Skyrim Special Edition"; // Default
+                    // "Hiçbiri" (Tüm oyunlar karışık) seçeneğini ekle
+                    const allOpt = { domain_name: 'all', name: 'Hiçbiri (Karışık)', downloads: null };
+                    allGamesList = [allOpt, ...games];
+                    
+                    gameSearchInput.value = "Hiçbiri (Karışık)"; // Default
                     gameSearchInput.placeholder = "Oyun adı yazın...";
-                    if(gameSelectValue) gameSelectValue.value = "skyrimspecialedition";
+                    if(gameSelectValue) gameSelectValue.value = "all";
                     
                     renderGameOptions(allGamesList);
                 }
@@ -44,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch(e) {
             console.error("Oyunlar yüklenirken bir hata oluştu:", e);
             gameSearchInput.placeholder = "Oyunlar yüklenemedi";
-            gameSearchInput.value = "Skyrim SE";
+            gameSearchInput.value = "Hiçbiri (Karışık)";
         }
 
         // Açılışta 12 tane yapay zekanın "rastgele seçtiği/önerdiği" güncel ve popüler modları sayfaya getir
@@ -65,7 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         gamesToRender.forEach(g => {
             const li = document.createElement("li");
-            li.textContent = `${g.name} (${g.downloads ? (g.downloads/1000000).toFixed(1) + 'M' : '0'})`;
+            const dlText = g.downloads !== null ? ` (${(g.downloads/1000000).toFixed(1)}M)` : "";
+            li.textContent = `${g.name}${dlText}`;
             li.dataset.domain = g.domain_name;
             
             li.addEventListener("click", () => {
@@ -97,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if(gameListDropdown) gameListDropdown.classList.remove("show");
                 
                 if(gameSearchInput.value.trim() === "" && allGamesList.length > 0) {
-                    gameSearchInput.value = originalValue || "Skyrim Special Edition";
+                    gameSearchInput.value = originalValue || "Hiçbiri (Karışık)";
                 }
             }
         });
@@ -123,8 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const description = mod.summary || mod.description || 'Bu mod hakkında bir açıklama sunulmamış.';
             const author = mod.author || 'Nexus Geliştiricisi';
             const iconUrl = mod.picture_url || 'https://api.dicebear.com/6.x/shapes/svg?seed=' + title; 
-            const categoryName = mod.category_name || currentGameDomain + ' Modu';
-            const projectUrl = `https://www.nexusmods.com/${currentGameDomain}/mods/${mod.mod_id}`;
+            
+            // Eğer sunucudan modun hangi oyuna ait olduğu geldiyse onu göster
+            let displayGame = mod.category_name || currentGameDomain;
+            if(displayGame === "all") displayGame = "Karışık";
+            
+            const categoryName = displayGame.charAt(0).toUpperCase() + displayGame.slice(1) + ' Modu';
+            
+            // Mod id'sine göre indirme linkini ayarla (all iken backendden categoryName = gamedomain olarak atanıyordu)
+            const resolvedDomain = mod.category_name || (currentGameDomain !== 'all' ? currentGameDomain : 'skyrimspecialedition');
+            const projectUrl = `https://www.nexusmods.com/${resolvedDomain}/mods/${mod.mod_id}`;
             const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
 
             const cardHtml = `
@@ -213,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         try {
             // Kendi yazdığımız Node.js arka plan (Backend) sunucumuza özel proxy isteği.
-            currentGameDomain = gameSelectValue ? gameSelectValue.value : "skyrimspecialedition";
+            currentGameDomain = gameSelectValue ? gameSelectValue.value : "all";
             const apiUrl = `http://localhost:3000/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
             
             const response = await fetch(apiUrl);
