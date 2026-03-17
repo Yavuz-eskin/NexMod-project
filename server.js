@@ -78,10 +78,8 @@ app.get('/api/search', async (req, res) => {
         // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 60'ı)
         let filteredMods = await Mod.find(filterCondition).limit(60).lean();
 
-        // Eğer hiçbir kelimeyle eşleşmediyse veya arama çok kısaysa,
-        // rastgele öne çıkan (en çok indirilen) vitrin modları gösterelim
-        if (filteredMods.length === 0 || lowerQuery.length < 2) {
-            // Eğer herhangi bir query yoksa en popüler 60 gönder
+        // Eğer arama çok kısaysa (query yoksa), vitrin/popüler modları göster (eski fallback)
+        if (lowerQuery.length < 2) {
             let fallbackFilter = gameDomain !== 'all' ? { $or: [{ domain_name: gameDomain }, { category_name: gameDomain }] } : {};
             filteredMods = await Mod.find(fallbackFilter).limit(60).lean();
         }
