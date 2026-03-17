@@ -175,7 +175,7 @@ app.post('/api/auth/register', async (req, res) => {
         await newUser.save();
 
         const token = jwt.sign({ id: newUser._id, username: newUser.username }, JWT_SECRET, { expiresIn: '30d' });
-        res.status(201).json({ token, username: newUser.username, favorites: newUser.favorites });
+        res.status(201).json({ token, username: newUser.username, favorites: newUser.favorites, avatarSeed: newUser.avatarSeed });
     } catch (err) {
         res.status(500).json({ error: 'Kayıt olurken bir hata oluştu.' });
     }
@@ -196,7 +196,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-        res.json({ token, username: user.username, favorites: user.favorites });
+        res.json({ token, username: user.username, favorites: user.favorites, avatarSeed: user.avatarSeed || "" });
     } catch (err) {
         res.status(500).json({ error: 'Giriş yapılırken sunucu hatası.' });
     }
@@ -296,6 +296,40 @@ app.post('/api/user/delete-account', authenticateToken, async (req, res) => {
         res.json({ message: 'Hesap başarıyla silindi.' });
     } catch (err) {
         res.status(500).json({ error: 'Hesap silinirken hata oluştu.' });
+    }
+});
+
+// Profil Bilgilerini Güncelleme (İsim ve Avatar)
+app.post('/api/user/update-profile', authenticateToken, async (req, res) => {
+    try {
+        const { newUsername, avatarSeed } = req.body;
+        const user = await User.findById(req.user.id);
+
+        if (newUsername && newUsername !== user.username) {
+            // İsim değişecekse başkası almış mı kontrol et
+            const existing = await User.findOne({ username: newUsername });
+            if (existing) return res.status(400).json({ error: 'Bu kullanıcı adı zaten alınmış.' });
+            user.username = newUsername;
+        }
+
+        if (avatarSeed !== undefined) {
+            user.avatarSeed = avatarSeed;
+        }
+
+        await user.save();
+        
+        // Yeni token üret çünkü username değişmiş olabilir (JWT payload'da username var)
+        const newToken = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+        
+        res.json({ 
+            message: 'Profil güncellendi.', 
+            token: newToken, 
+            username: user.username, 
+            avatarSeed: user.avatarSeed 
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Profil güncellenemedi.' });
     }
 });
 

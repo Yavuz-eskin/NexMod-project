@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const navTop = document.getElementById("nav-top");
     const navFavorites = document.getElementById("nav-favorites");
 
-    // Auth Elementleri
     const userProfileBtn = document.getElementById("user-profile-btn");
     const userNameDisplay = document.getElementById("user-name-display");
     const authModal = document.getElementById("auth-modal");
@@ -24,6 +23,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const authToggleText = document.getElementById("auth-toggle-text");
     const authErrorMsg = document.getElementById("auth-error-msg");
 
+    // Full Page Account Elementleri
+    const accountPage = document.getElementById("account-settings-page");
+    const heroSection = document.querySelector(".hero");
+    const recommendationsSection = document.querySelector(".recommendations");
+    const accountTabs = document.querySelectorAll(".account-sidebar div");
+    const tabPanes = document.querySelectorAll(".tab-pane");
+
+    const editUsername = document.getElementById("edit-username");
+    const editAvatarSeed = document.getElementById("edit-avatar-seed");
+    const editAvatarPreview = document.getElementById("edit-avatar-preview");
+    const randomAvatarBtn = document.getElementById("random-avatar-btn");
+    const saveProfileBtn = document.getElementById("save-profile-btn");
+    const accountStatusMsg = document.getElementById("account-status-msg");
+
+    const fullChangePasswordForm = document.getElementById("full-change-password-form");
+    const fullSavePrefsBtn = document.getElementById("full-save-prefs-btn");
+    const fullDeleteAccountBtn = document.getElementById("full-delete-account-btn");
+
     // Sidebar Elementleri
     const userSidebar = document.getElementById("user-sidebar");
     const sidebarOverlay = document.getElementById("sidebar-overlay");
@@ -34,16 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarAccountBtn = document.getElementById("sidebar-account-btn");
     const sidebarPrefsBtn = document.getElementById("sidebar-prefs-btn");
     const logoutBtn = document.getElementById("logout-btn");
-
-    // Settings Modal Elementleri
-    const settingsModal = document.getElementById("settings-modal");
-    const closeSettingsBtn = document.getElementById("close-settings-btn");
-    const accountSection = document.getElementById("account-section");
-    const prefsSection = document.getElementById("prefs-section");
-    const settingsMsg = document.getElementById("settings-msg");
-    const changePasswordForm = document.getElementById("change-password-form");
-    const savePrefsBtn = document.getElementById("save-prefs-btn");
-    const deleteAccountBtn = document.getElementById("delete-account-btn");
 
     let allGamesList = [];
     let currentModsData = [];
@@ -168,15 +175,163 @@ document.addEventListener("DOMContentLoaded", () => {
             userNameDisplay.style.display = "block";
             const userImg = document.querySelector("#user-profile-btn img");
             if(userImg) {
-                const avatarUrl = `https://api.dicebear.com/6.x/avataaars/svg?seed=${currentUser.username}`;
+                const seed = currentUser.avatarSeed || currentUser.username;
+                const avatarUrl = `https://api.dicebear.com/6.x/avataaars/svg?seed=${seed}`;
                 userImg.src = avatarUrl;
                 if(sidebarUserImg) sidebarUserImg.src = avatarUrl;
+                if(sidebarUserName) sidebarUserName.innerText = currentUser.username;
+                if(editAvatarPreview) editAvatarPreview.src = avatarUrl;
+                if(editAvatarSeed) editAvatarSeed.value = currentUser.avatarSeed || "";
+                if(editUsername) editUsername.value = currentUser.username;
             }
-            if(sidebarUserName) sidebarUserName.innerText = currentUser.username;
         } else if (userNameDisplay) {
             userNameDisplay.innerText = "Giriş Yap";
             userNameDisplay.style.display = "block";
         }
+    }
+
+    // Tab geçiş mantığı
+    accountTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            const targetTab = tab.dataset.tab;
+            
+            // Sidebar active class
+            accountTabs.forEach(t => t.classList.remove("active-tab"));
+            tab.classList.add("active-tab");
+
+            // Content active class
+            tabPanes.forEach(pane => {
+                pane.classList.remove("active");
+                if (pane.id === `tab-${targetTab}`) {
+                    pane.classList.add("active");
+                }
+            });
+            if(accountStatusMsg) accountStatusMsg.style.display = "none";
+        });
+    });
+
+    // Avatar Seed Değişimi (Preview)
+    if (editAvatarSeed) {
+        editAvatarSeed.addEventListener("input", (e) => {
+            const seed = e.target.value || "Felix";
+            if(editAvatarPreview) editAvatarPreview.src = `https://api.dicebear.com/6.x/avataaars/svg?seed=${seed}`;
+        });
+    }
+
+    if (randomAvatarBtn) {
+        randomAvatarBtn.addEventListener("click", () => {
+            const randomSeed = Math.random().toString(36).substring(7);
+            if(editAvatarSeed) {
+                editAvatarSeed.value = randomSeed;
+                editAvatarSeed.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+
+    function showAccountMsg(msg, status = "success") {
+        if(!accountStatusMsg) return;
+        accountStatusMsg.innerText = msg;
+        accountStatusMsg.style.color = status === "success" ? "#10b981" : "#ef4444";
+        accountStatusMsg.style.display = "block";
+    }
+
+    // Profil Kaydetme (Username & Avatar)
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener("click", async () => {
+            const newUsername = editUsername.value.trim();
+            const avatarSeed = editAvatarSeed.value.trim();
+
+            if (newUsername.length < 3) {
+                showAccountMsg("Kullanıcı adı en az 3 karakter olmalıdır.", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/user/update-profile', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ newUsername, avatarSeed })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    currentUser.username = data.username;
+                    currentUser.token = data.token;
+                    currentUser.avatarSeed = data.avatarSeed;
+                    localStorage.setItem('nexmod_user', JSON.stringify(currentUser));
+                    updateUserUI();
+                    showAccountMsg("Profil başarıyla güncellendi!");
+                } else {
+                    showAccountMsg(data.error || "Giriş yapılamadı.", "error");
+                }
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    // Şifre Değiştirme (Full Page)
+    if (fullChangePasswordForm) {
+        fullChangePasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById("full-current-password").value;
+            const newPassword = document.getElementById("full-new-password").value;
+
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAccountMsg("Şifreniz güncellendi!");
+                    fullChangePasswordForm.reset();
+                } else {
+                    showAccountMsg(data.error || "Hata", "error");
+                }
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    // Tercihler (Full Page)
+    if (fullSavePrefsBtn) {
+        fullSavePrefsBtn.addEventListener("click", async () => {
+            const language = document.getElementById("full-pref-lang").value;
+            try {
+                const res = await fetch('/api/user/preferences', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ preferences: { language } })
+                });
+                if (res.ok) showAccountMsg("Tercihler kaydedildi!");
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    // Hesap Silme (Full Page)
+    if (fullDeleteAccountBtn) {
+        fullDeleteAccountBtn.addEventListener("click", async () => {
+            if (confirm("HESABINIZI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ?")) {
+                try {
+                    const res = await fetch('/api/user/delete-account', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                    });
+                    if (res.ok) {
+                        alert("Hesabınız silindi.");
+                        logout();
+                    }
+                } catch (err) { console.error(err); }
+            }
+        });
     }
 
     if (userProfileBtn) {
@@ -233,104 +388,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openSettingsModal(section) {
-        if (!settingsModal) return;
-        settingsModal.style.display = "flex";
-        if(settingsMsg) settingsMsg.style.display = "none";
+        // Eski modalı değil, yeni full-page section'ı gösteriyoruz
+        hideAllMainSections();
+        if(accountPage) accountPage.style.display = "block";
         
-        if (section === 'account') {
-            accountSection.style.display = "block";
-            prefsSection.style.display = "none";
-        } else {
-            accountSection.style.display = "none";
-            prefsSection.style.display = "block";
-        }
+        // İlgili taba tıkla
+        const targetTab = section === 'account' ? 'profile' : 'prefs';
+        const tabEl = document.querySelector(`.account-sidebar div[data-tab="${targetTab}"]`);
+        if(tabEl) tabEl.click();
     }
 
-    if (closeSettingsBtn) {
-        closeSettingsBtn.addEventListener("click", () => {
-            if(settingsModal) settingsModal.style.display = "none";
-        });
-    }
-
-    // Şifre Değiştirme Formu
-    if (changePasswordForm) {
-        changePasswordForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const currentPassword = document.getElementById("current-password").value;
-            const newPassword = document.getElementById("new-password").value;
-
-            if (newPassword.length < 5) {
-                showSettingsMsg("Yeni şifre en az 5 karakter olmalıdır.", "error");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/user/change-password', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentUser.token}`
-                    },
-                    body: JSON.stringify({ currentPassword, newPassword })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showSettingsMsg("Şifreniz başarıyla güncellendi!", "success");
-                    changePasswordForm.reset();
-                } else {
-                    showSettingsMsg(data.error || "Şifre güncellenemedi.", "error");
-                }
-            } catch (err) { console.error(err); }
-        });
-    }
-
-    // Tercihleri Kaydetme
-    if (savePrefsBtn) {
-        savePrefsBtn.addEventListener("click", async () => {
-            const language = document.getElementById("pref-lang").value;
-            const preferences = { language };
-
-            try {
-                const res = await fetch('/api/user/preferences', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentUser.token}`
-                    },
-                    body: JSON.stringify({ preferences })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showSettingsMsg("Tercihler kaydedildi. (Sayfa yenilendiğinde aktif olur)", "success");
-                }
-            } catch (err) { console.error(err); }
-        });
-    }
-
-    // Hesap Silme
-    if (deleteAccountBtn) {
-        deleteAccountBtn.addEventListener("click", async () => {
-            if (confirm("HESABINIZI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ? Bu işlem geri alınamaz ve tüm favorileriniz silinir.")) {
-                try {
-                    const res = await fetch('/api/user/delete-account', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${currentUser.token}` }
-                    });
-                    if (res.ok) {
-                        alert("Hesabınız silindi. Güle güle!");
-                        logout();
-                        if(settingsModal) settingsModal.style.display = "none";
-                    }
-                } catch (err) { console.error(err); }
-            }
-        });
-    }
-
-    function showSettingsMsg(msg, type) {
-        if (!settingsMsg) return;
-        settingsMsg.innerText = msg;
-        settingsMsg.style.color = type === "success" ? "#10b981" : "#ef4444";
-        settingsMsg.style.display = "block";
+    function hideAllMainSections() {
+        if(heroSection) heroSection.style.display = "none";
+        if(recommendationsSection) recommendationsSection.style.display = "none";
+        if(accountPage) accountPage.style.display = "none";
+        
+        // Navlardaki active classları temizle
+        if(navDiscover) navDiscover.classList.remove("active");
+        if(navTop) navTop.classList.remove("active");
+        if(navFavorites) navFavorites.classList.remove("active");
     }
 
     if (logoutBtn) {
@@ -415,8 +491,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navTop) {
         navTop.addEventListener("click", (e) => {
             e.preventDefault();
-            if(navDiscover) navDiscover.classList.remove("active");
-            if(navFavorites) navFavorites.classList.remove("active");
+            hideAllMainSections();
+            if(recommendationsSection) recommendationsSection.style.display = "block";
             navTop.classList.add("active");
             
             const sectionHeaderH2 = document.querySelector(".section-header h2");
@@ -432,8 +508,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navDiscover) {
         navDiscover.addEventListener("click", (e) => {
             e.preventDefault();
-            if(navTop) navTop.classList.remove("active");
-            if(navFavorites) navFavorites.classList.remove("active");
+            hideAllMainSections();
+            if(heroSection) heroSection.style.display = "block";
+            if(recommendationsSection) recommendationsSection.style.display = "block";
             navDiscover.classList.add("active");
             
             const sectionHeaderH2 = document.querySelector(".section-header h2");
@@ -455,8 +532,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            if(navDiscover) navDiscover.classList.remove("active");
-            if(navTop) navTop.classList.remove("active");
+            hideAllMainSections();
+            if(recommendationsSection) recommendationsSection.style.display = "block";
             navFavorites.classList.add("active");
             
             const sectionHeaderH2 = document.querySelector(".section-header h2");

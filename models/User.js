@@ -20,6 +20,10 @@ const UserSchema = new mongoose.Schema({
     preferences: {
         type: mongoose.Schema.Types.Mixed,
         default: { darkMode: true, language: 'tr' }
+    },
+    avatarSeed: {
+        type: String,
+        default: ""
     }
 }, { timestamps: true });
 
