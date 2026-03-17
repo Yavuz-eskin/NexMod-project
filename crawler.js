@@ -96,7 +96,18 @@ async function crawlMods() {
     console.log(`✅ İşlem Tamamlandı! Toplam ${insertedCount} benzersiz mod MongoDB Atlas'a başarıyla kaydedildi.`);
     console.log('Artık sunucunuz bu kendi Bulut (Cloud) veri tabanı üzerinden ışık hızında arama yapabilecek!');
     
-    process.exit(0);
+    return insertedCount;
 }
 
-crawlMods();
+// Eğer bu dosya terminalden tek başına "node crawler.js" olarak çalıştırıldıysa process.exit çağır
+if (require.main === module) {
+    crawlMods().then(() => {
+        process.exit(0);
+    }).catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
+
+// Eğer server.js gibi başka bir koddan çağrılırsa diye export et
+module.exports = crawlMods;

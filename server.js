@@ -2,7 +2,9 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const cron = require('node-cron');
 const Mod = require('./models/Mod');
+const crawlMods = require('./crawler');
 require('dotenv').config();
 
 const app = express();
@@ -15,7 +17,19 @@ app.use(cors());
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
     mongoose.connect(MONGO_URI)
-        .then(() => console.log('MongoDB Atlas bağlantısı başarıyla kuruldu!'))
+        .then(() => {
+            console.log('MongoDB Atlas bağlantısı başarıyla kuruldu!');
+            
+            // Veritabanı bağlantısı başarılıysa ve cron ile zamanlanmış görev varsa
+            // Her gece saat 03:00'te Nexus Mods veritabanından en güncel modları çekip kaydetmesi için programlanmış görev
+            cron.schedule('0 3 * * *', async () => {
+                console.log("⏰ Saat 03:00 Zamanlanmış Görev (Cron Job) Başlıyor...");
+                console.log("-> Otomatik NexusMods Crawler/Robot devreye girdi!");
+                await crawlMods();
+                console.log("✅ Gece 03:00 senkronizasyonu tamamlandı.");
+            });
+            console.log('Zamanlanmış Robot Aktif: Her gece 03:00\'te yeni modlar veritabanına eklenecek.');
+        })
         .catch(err => console.error('MongoDB Atlas yapılandırma veya bağlanma hatası:', err));
 } else {
     console.error('MONGO_URI .env dosyasında bulunamadı!');
