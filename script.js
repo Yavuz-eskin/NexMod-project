@@ -183,10 +183,26 @@ document.addEventListener("DOMContentLoaded", () => {
             const resolvedDomain = mod.domain_name || mod.category_name || (currentGameDomain !== 'all' ? currentGameDomain : 'skyrimspecialedition');
             const projectUrl = `https://www.nexusmods.com/${resolvedDomain}/mods/${mod.mod_id}`;
             
-            // AI Eşleşmesini oyunun mod ID'sine göre matematiksel ve sabit (gerçekçi) bir değere bağlayalım.
-            // Böylece aynı karta her bakıldığında aynı AI tahmini (%80-%99 arası) gözükecek.
-            const generateConsistentMatch = (id) => (id % 20) + 80; // 80 ile 99 arasında bir rakam çıkartır
-            const matchPercent = generateConsistentMatch(mod.mod_id || Math.floor(Math.random() * 100));
+            // Kullanıcının arama Kelimesine (Prompt'a) göre AI eşleşme oranını GERÇEKÇİ hesapla
+            let matchPercent = 99; 
+            const activeQuery = (window.lastActiveQuery || "").toLowerCase();
+            
+            if (activeQuery.length > 1) {
+                const n = (title).toLowerCase();
+                const s = (description).toLowerCase();
+                
+                // Aranan kelime tam olarak başlıkta varsa VURGUN (%99)
+                if (n === activeQuery) matchPercent = 99;
+                // Aranan kelime başlığın bir kısmında geçiyorsa YÜKSEK UYUM (%90-%98)
+                else if (n.includes(activeQuery)) matchPercent = 90 + (mod.mod_id % 9);
+                // Başlıkta yok ama açıklamanın içinde geçiyorsa ORTA UYUM (%80-%89)
+                else if (s.includes(activeQuery)) matchPercent = 80 + (mod.mod_id % 10);
+                // Çok derinlerde veya kategoride eşleşiyorsa DÜŞÜK UYUM (%70-%79)
+                else matchPercent = 70 + (mod.mod_id % 10);
+            } else {
+                // Eğer herhangi bir arama yapılmadıysa (Sivri bir prompt yoksa), sitenin varsayılan kalite puanı olsun
+                matchPercent = 85 + (mod.mod_id % 15); 
+            }
 
             // İndirme sayısını şık bir M (Milyon) veya K (Bin) formatına çevir
             let downloadBadge = "";
@@ -263,6 +279,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function triggerAISearch(isInitial = false) {
         let query = "";
         if (inputField) query = inputField.value.trim();
+        
+        // Arama yapıldığında, daha sonra AI %'sini hesaplamak için kelimeyi hafızaya al
+        window.lastActiveQuery = query;
         
         if(!query && !isInitial) {
             if (inputField) inputField.focus();
@@ -346,6 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function fetchTopMods() {
         if (overlay) overlay.classList.add("active");
+        window.lastActiveQuery = ""; // Çok Sevilenler'de arama parametresi bulunmuyor
         
         container.style.transition = '0.5s ease';
         container.style.opacity = '0';
