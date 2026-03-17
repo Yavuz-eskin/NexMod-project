@@ -1,9 +1,10 @@
 require('dotenv').config();
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+const Mod = require('./models/Mod');
 
 const API_KEY = process.env.NEXUS_API_KEY;
+const MONGO_URI = process.env.MONGO_URI;
 
 // Projemizin yerel veri tabanını oluşturacağımız popüler oyunlar havuzu
 const TOP_GAMES = [
@@ -20,8 +21,17 @@ const TOP_GAMES = [
 ];
 
 async function crawlMods() {
-    if (!API_KEY) {
-        console.error("HATA: .env dosyasında NEXUS_API_KEY bulunamadı!");
+    if (!API_KEY || !MONGO_URI) {
+        console.error("HATA: .env dosyasında NEXUS_API_KEY veya MONGO_URI bulunamadı!");
+        return;
+    }
+
+    try {
+        console.log("MongoDB Atlas'a bağlanılıyor...");
+        await mongoose.connect(MONGO_URI);
+        console.log("MongoDB bağlantısı başarılı!");
+    } catch(err) {
+        console.error("MongoDB bağlantı hatası:", err);
         return;
     }
 
@@ -64,12 +74,29 @@ async function crawlMods() {
         }
     }
     
-    // Tüm verileri JSON dosyası olarak proje dizinine (Veri Tabanına) kaydet
-    const dbPath = path.join(__dirname, 'mods_db.json');
-    fs.writeFileSync(dbPath, JSON.stringify(allMods, null, 2));
+    // Mongoose kullanarak tüm modları MongoDB'ye sokuşturuyoruz
+    // updateOne metodu ile duplicate ID hatalarını ignore edeceğiz (upsert)
+    console.log(`Sunucuda toplanan ${allMods.length} eşsiz mod MongoDB Atlas veri tabanına işleniyor...`);
+    let insertedCount = 0;
+    
+    for (const dataItem of allMods) {
+        try {
+            await Mod.updateOne(
+                { domain_name: dataItem.domain_name, mod_id: dataItem.mod_id },
+                { $set: dataItem },
+                { upsert: true }
+            );
+            insertedCount++;
+        } catch(e) {
+            console.error(`Mod işlenirken hata (ID: ${dataItem.mod_id}):`, e.message);
+        }
+    }
+    
     console.log('--------------------------------------------------');
-    console.log(`✅ İşlem Tamamlandı! Toplam ${allMods.length} benzersiz mod 'mods_db.json' veri tabanına kaydedildi.`);
-    console.log('Artık sunucunuz bu kendi veri tabanı üzerinden anında arama yapabilecek!');
+    console.log(`✅ İşlem Tamamlandı! Toplam ${insertedCount} benzersiz mod MongoDB Atlas'a başarıyla kaydedildi.`);
+    console.log('Artık sunucunuz bu kendi Bulut (Cloud) veri tabanı üzerinden ışık hızında arama yapabilecek!');
+    
+    process.exit(0);
 }
 
 crawlMods();
