@@ -33,22 +33,29 @@ async function crawlMods() {
         });
         
         // Sadece 500.000 (Yarım Milyon) ve üstü indirmesi olan Popüler Oyunları Filtreliyoruz!
-        const popularGames = gamesRes.data.filter(g => g.downloads && g.downloads >= 500000);
+        // Toplam dev oyunlar arasından EN popüler ilk 30 tanesini alıyoruz
+        const popularGames = gamesRes.data
+            .filter(g => g.downloads && g.downloads >= 500000)
+            .sort((a, b) => b.downloads - a.downloads) // En çok indirilenden en aza sıralar
+            .slice(0, 30); // Sadece En tepe 30 oyunu alır
+            
         TOP_GAMES = popularGames.map(g => g.domain_name);
-        console.log(`Filtreleme tamamlandı: Toplam ${TOP_GAMES.length} Adet (Popüler) Oyun taranacak.`);
+        console.log(`Filtreleme & Sıralama Tamamlandı: En popüler ${TOP_GAMES.length} oyun taranacak.`);
     } catch (err) {
         console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
         return;
     }
 
+    // Bekleme fonskiyonumuz
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     let allMods = [];
     let seenIds = new Set();
     
-    // Her bir oyun için Nexus API'sine bağlanıp verileri çekiyoruz
+    // ----- BÖLÜM 1: GÜNLÜK TREND MODLAR ve YENİLER (Oyun basina ~30-40 adet) -----
     for (const game of TOP_GAMES) {
         try {
-            console.log(`[${game}] modları çekiliyor...`);
-            // Her oyun için ayrı ayrı en yeni, güncellenen ve trend olan paketleri al
+            console.log(`\n[${game}] Trend Modları Çekiliyor...`);
             const endpoints = [
                 `https://api.nexusmods.com/v1/games/${game}/mods/trending.json`,
                 `https://api.nexusmods.com/v1/games/${game}/mods/latest_added.json`,
@@ -56,41 +63,33 @@ async function crawlMods() {
             ];
             
             for (const endpoint of endpoints) {
-                // Hatalı istekleri göz ardı edip diğerlerine devam etmesini sağla
                 const res = await axios.get(endpoint, {
                     headers: { 'accept': 'application/json', 'apikey': API_KEY }
                 }).catch(e => { return {data: []}; }); 
                 
-                // Sunucuyu boğmamak için ufak bir bekleme süresi
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await sleep(300);
 
                 if (res.data && Array.isArray(res.data)) {
                     res.data.forEach(mod => {
-                        // Eğer mod ismi yoksa (İsimsiz Mod durumları) veritabanına alma
-                        if (!mod.name || mod.name.trim() === '') {
-                            return; // Bu modu pas geç
-                        }
-
-                        // Aynı id'ye sahip olanları (Örn: Hem yeni hem trend olabilir) bir kere kaydet
+                        if (!mod.name || mod.name.trim() === '') return;
+                        
                         const uniqueIdentifier = `${game}_${mod.mod_id}`;
                         if (!seenIds.has(uniqueIdentifier)) {
                             seenIds.add(uniqueIdentifier);
-                            mod.domain_name = game; // Hangi oyunun verisi olduğunu damgala
+                            mod.domain_name = game;
                             allMods.push(mod);
                         }
                     });
                 }
             }
         } catch(error) {
-            console.error(`[${game}] çekilirken hata oluştu:`, error.message);
+            console.error(`[${game}] Trendler çekilirken hata oluştu:`, error.message);
         }
     }
-    
-    // Mongoose kullanarak tüm modları MongoDB'ye sokuşturuyoruz
-    // updateOne metodu ile duplicate ID hatalarını ignore edeceğiz (upsert)
-    console.log(`Sunucuda toplanan ${allMods.length} eşsiz mod MongoDB Atlas veri tabanına işleniyor...`);
-    let insertedCount = 0;
-    
+
+    // Trendleri MongoDB'ye Upsert edelim
+    console.log(`\nSunucuda toplanan ${allMods.length} trend mod veritabanına işleniyor...`);
+    let insertedTrendCount = 0;
     for (const dataItem of allMods) {
         try {
             await Mod.updateOne(
@@ -98,17 +97,67 @@ async function crawlMods() {
                 { $set: dataItem },
                 { upsert: true }
             );
-            insertedCount++;
-        } catch(e) {
-            console.error(`Mod işlenirken hata (ID: ${dataItem.mod_id}):`, e.message);
+            insertedTrendCount++;
+        } catch(e) {}
+    }
+    
+    // ----- BÖLÜM 2: DERİN TARAMA (Her Oyun İçin İlk 250 Modu Garantile) -----
+    // Kotayı korumak için, veritabanında ZATEN KAYITLI modları es geçer!
+    console.log(`\n>>> Derin Tarama (Deep Crawl) Başlıyor: 30 Oyun x 250 Mod Hedefi (Kota Korumalı)`);
+    let deepInsertedCount = 0;
+    
+    for (const game of TOP_GAMES) {
+        console.log(`[${game}] için ilk 250 mod garantisi kontrol ediliyor...`);
+        let gameDeepAddedCount = 0;
+
+        for (let modId = 1; modId <= 250; modId++) {
+            // VERİTABANI: Bu ID veritabanımızda zaten var mı? Varsa API'ye hiç gidip kota harcama!
+            const exists = await Mod.exists({ domain_name: game, mod_id: modId });
+            if (exists) {
+                continue; // Zaten varsa pas geç. Harika bir optimizasyon!
+            }
+
+            // Veritabanında yoksa, mecbur Nexus'un kapısını çalacağız
+            const url = `https://api.nexusmods.com/v1/games/${game}/mods/${modId}.json`;
+            try {
+                const res = await axios.get(url, {
+                    headers: { 'accept': 'application/json', 'apikey': API_KEY }
+                });
+                const mod = res.data;
+
+                if (!mod.name || mod.name.trim() === '' || mod.status === 'hidden' || mod.status === 'not_published') {
+                    await sleep(300);
+                    continue; 
+                }
+
+                mod.domain_name = game;
+
+                await Mod.updateOne(
+                    { domain_name: mod.domain_name, mod_id: mod.mod_id },
+                    { $set: mod },
+                    { upsert: true }
+                );
+
+                gameDeepAddedCount++;
+                deepInsertedCount++;
+
+            } catch (error) {
+                // Silinmiş/Premium modları vb. dert etmeden atla
+            }
+
+            await sleep(500); // Saniyede 2 istek ile ban yemekten kurtuluruz
+        }
+        
+        if(gameDeepAddedCount > 0) {
+            console.log(`[${game}] oyununa ${gameDeepAddedCount} TANE YENİ (eksik) mod çekildi.`);
         }
     }
     
     console.log('--------------------------------------------------');
-    console.log(`✅ İşlem Tamamlandı! Toplam ${insertedCount} benzersiz mod MongoDB Atlas'a başarıyla kaydedildi.`);
-    console.log('Artık sunucunuz bu kendi Bulut (Cloud) veri tabanı üzerinden ışık hızında arama yapabilecek!');
+    console.log(`✅ İşlem Tamamlandı! Toplam İşlenen Yeni Modlar: ${insertedTrendCount + deepInsertedCount}`);
+    console.log('Zamanlanmış Gece Botu Uyku Moduna Geçiyor...');
     
-    return insertedCount;
+    return (insertedTrendCount + deepInsertedCount);
 }
 
 // Eğer bu dosya terminalden tek başına "node crawler.js" olarak çalıştırıldıysa process.exit çağır
