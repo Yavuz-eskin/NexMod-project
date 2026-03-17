@@ -6,10 +6,17 @@ const Mod = require('./models/Mod');
 const API_KEY = process.env.NEXUS_API_KEY;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Hedef Oyun ve Taranacak Mod Aralığı (ID 1 den başlayarak 300'e kadar)
-const TARGET_GAME = 'skyrimspecialedition';
+// Hedef Oyunlar ve Taranacak Mod Aralığı (Her oyun için ayrı ayrı)
+const TOP_GAMES = [
+    'skyrimspecialedition',
+    'fallout4',
+    'cyberpunk2077',
+    'stardewvalley',
+    'witcher3',
+    'baldursgate3' // isteğe göre eklenebilir
+];
 const START_ID = 1;
-const END_ID = 200; // API kotasını anlık tüketmemek için ilk etapta 200 mod seçiyoruz
+const END_ID = 150; // API kotasını anlık tüketmemek için ilk etapta her oyun için 150 mod seçiyoruz (150 * 6 = 900 istek yapar)
 const DELAY_MS = 1000; // Saniyede 1 istek (1000ms). Nexus Mods limitlerine takılmamak/ban yememek için bekleme süresi
 
 async function sleep(ms) {
@@ -31,60 +38,75 @@ async function deepCrawl() {
         return;
     }
 
-    console.log(`[Deep Crawler] Başlatıldı. Hedef Oyun: ${TARGET_GAME}, ID Aralığı: ${START_ID} - ${END_ID}`);
-    let insertedCount = 0;
-    let failedCount = 0;
+    console.log(`[Deep Crawler] Başlatıldı. Toplam ${TOP_GAMES.length} oyun taranacak.`);
+    console.log(`Her oyun için ID Aralığı: ${START_ID} - ${END_ID}\n`);
 
-    for (let currentId = START_ID; currentId <= END_ID; currentId++) {
-        const url = `https://api.nexusmods.com/v1/games/${TARGET_GAME}/mods/${currentId}.json`;
+    let totalInserted = 0;
+    let totalFailed = 0;
+
+    for (const game of TOP_GAMES) {
+        console.log(`\n=============================================================`);
+        console.log(`>>> SIRADAKİ OYUN: ${game.toUpperCase()}`);
+        console.log(`=============================================================\n`);
         
-        try {
-            console.log(`[ID: ${currentId}] modu çekiliyor...`);
-            const res = await axios.get(url, {
-                headers: { 'accept': 'application/json', 'apikey': API_KEY }
-            });
+        let gameInserted = 0;
+        let gameFailed = 0;
 
-            const mod = res.data;
+        for (let currentId = START_ID; currentId <= END_ID; currentId++) {
+            const url = `https://api.nexusmods.com/v1/games/${game}/mods/${currentId}.json`;
+            
+            try {
+                // Sadece yüzde cinsinden bir bilgi verelim ki ekran çok karışmasın (isteğe bağlı)
+                const res = await axios.get(url, {
+                    headers: { 'accept': 'application/json', 'apikey': API_KEY }
+                });
 
-            // Gizlenmiş, silinmiş veya ismi olmayan modları atlıyoruz.
-            if (!mod.name || mod.name.trim() === '' || mod.status === 'hidden' || mod.status === 'not_published') {
-                console.log(`[ID: ${currentId}] Atlandı (İsimsiz veya Gizli Mod).`);
-                continue;
+                const mod = res.data;
+
+                // Gizlenmiş, silinmiş veya ismi olmayan modları atlıyoruz.
+                if (!mod.name || mod.name.trim() === '' || mod.status === 'hidden' || mod.status === 'not_published') {
+                    console.log(`[${game} - ID: ${currentId}] ✨ Atlandı (İsimsiz veya Gizli Mod).`);
+                    continue;
+                }
+
+                // Gelen datada domain_name var mı kontrol et, yoksa biz ekleyelim
+                mod.domain_name = mod.domain_name || game;
+
+                // Veritabanına kaydet
+                await Mod.updateOne(
+                    { domain_name: mod.domain_name, mod_id: mod.mod_id },
+                    { $set: mod },
+                    { upsert: true }
+                );
+
+                console.log(`✅ [${game} - ID: ${currentId}] Kaydedildi: ${mod.name.substring(0, 30)}`);
+                gameInserted++;
+                totalInserted++;
+
+            } catch (error) {
+                // Eğer mod silinmişse 404, premium ise 403 vb. hatalar verebilir.
+                if (error.response && error.response.status === 404) {
+                    console.log(`❌ [${game} - ID: ${currentId}] Bulunamadı (Silinmiş olabilir).`);
+                } else if (error.response && error.response.status === 403) {
+                     console.log(`🔒 [${game} - ID: ${currentId}] Erişim izni yok (Premium).`);
+                } else {
+                    console.error(`⚠️ [${game} - ID: ${currentId}] Hata:`, error.message);
+                }
+                gameFailed++;
+                totalFailed++;
             }
 
-            // Gelen datada domain_name var mı kontrol et, yoksa biz ekleyelim
-            mod.domain_name = mod.domain_name || TARGET_GAME;
-
-            // Veritabanına kaydet
-            await Mod.updateOne(
-                { domain_name: mod.domain_name, mod_id: mod.mod_id },
-                { $set: mod },
-                { upsert: true }
-            );
-
-            console.log(`✅ [ID: ${currentId}] Başarıyla veritabanına eklendi/güncellendi: ${mod.name.substring(0, 30)}`);
-            insertedCount++;
-
-        } catch (error) {
-            // Eğer mod silinmişse 404, premium ise 403 vb. hatalar verebilir.
-            if (error.response && error.response.status === 404) {
-                console.log(`❌ [ID: ${currentId}] Bulunamadı (Silinmiş olabilir).`);
-            } else if (error.response && error.response.status === 403) {
-                 console.log(`🔒 [ID: ${currentId}] Erişim izni yok (Yetişkin içerik veya Premium olabilir).`);
-            } else {
-                console.error(`⚠️ [ID: ${currentId}] Hata:`, error.message);
-            }
-            failedCount++;
+            // Nexus sunucusunu rahatsız etmemek ve bağlantının kopmaması için bekle !
+            await sleep(DELAY_MS);
         }
-
-        // Nexus sunucusunu rahatsız etmemek ve bağlantının kopmaması için bekle !
-        await sleep(DELAY_MS);
+        
+        console.log(`\n🎉 [${game.toUpperCase()}] Bitti! Eklenen: ${gameInserted}, Atlanan/Hatalı: ${gameFailed}\n`);
     }
 
     console.log('--------------------------------------------------');
     console.log(`🚀 [Deep Crawler] İşlem Tamamlandı!`);
-    console.log(`Veritabanına İşlenen Başarılı Mod Sayısı: ${insertedCount}`);
-    console.log(`Bulunamayan / Atlanan / Hatalı Mod Sayısı: ${failedCount}`);
+    console.log(`Veritabanına İşlenen TOPLAM Başarılı Mod Sayısı: ${totalInserted}`);
+    console.log(`TOPLAM Bulunamayan / Atlanan / Hatalı Mod Sayısı: ${totalFailed}`);
     console.log('Sunucu bağlantısı kapatılıyor...');
     
     await mongoose.disconnect();
