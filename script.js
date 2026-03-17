@@ -182,7 +182,11 @@ document.addEventListener("DOMContentLoaded", () => {
             // Mod id'sine göre indirme linkini ayarla
             const resolvedDomain = mod.domain_name || mod.category_name || (currentGameDomain !== 'all' ? currentGameDomain : 'skyrimspecialedition');
             const projectUrl = `https://www.nexusmods.com/${resolvedDomain}/mods/${mod.mod_id}`;
-            const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
+            
+            // AI Eşleşmesini oyunun mod ID'sine göre matematiksel ve sabit (gerçekçi) bir değere bağlayalım.
+            // Böylece aynı karta her bakıldığında aynı AI tahmini (%80-%99 arası) gözükecek.
+            const generateConsistentMatch = (id) => (id % 20) + 80; // 80 ile 99 arasında bir rakam çıkartır
+            const matchPercent = generateConsistentMatch(mod.mod_id || Math.floor(Math.random() * 100));
 
             // İndirme sayısını şık bir M (Milyon) veya K (Bin) formatına çevir
             let downloadBadge = "";
