@@ -110,11 +110,17 @@ async function crawlMods() {
         console.log(`[${game}] için ilk 250 mod garantisi kontrol ediliyor...`);
         let gameDeepAddedCount = 0;
 
-        for (let modId = 1; modId <= 250; modId++) {
+        let validModsCount = 0; // Bu sayaç 250 olana kadar devam edecek
+        let modId = 1;
+
+        // Tam olarak 250 adet geçerli mod bulana kadar (veya sonsuz döngüyü önlemek için 1500 id denemesi bitene kadar)
+        while (validModsCount < 250 && modId <= 1500) {
             // VERİTABANI: Bu ID veritabanımızda zaten var mı? Varsa API'ye hiç gidip kota harcama!
             const exists = await Mod.exists({ domain_name: game, mod_id: modId });
             if (exists) {
-                continue; // Zaten varsa pas geç. Harika bir optimizasyon!
+                validModsCount++; // Veritabanında zaten geçerli olarak kayıtlı
+                modId++;
+                continue; // Atla ve sonrakine geç
             }
 
             // Veritabanında yoksa, mecbur Nexus'un kapısını çalacağız
@@ -127,7 +133,8 @@ async function crawlMods() {
 
                 if (!mod.name || mod.name.trim() === '' || mod.status === 'hidden' || mod.status === 'not_published') {
                     await sleep(300);
-                    continue; 
+                    modId++;
+                    continue; // Bu Gizli/Bozuk bir mod, sayaç ASLA artmaz!
                 }
 
                 mod.domain_name = game;
@@ -138,13 +145,15 @@ async function crawlMods() {
                     { upsert: true }
                 );
 
+                validModsCount++; // Gerçekten başarılı bir mod çektik!
                 gameDeepAddedCount++;
                 deepInsertedCount++;
 
             } catch (error) {
-                // Silinmiş/Premium modları vb. dert etmeden atla
+                // Silinmiş/Premium veya 404 modları vb. dert etmeden atla
             }
 
+            modId++;
             await sleep(500); // Saniyede 2 istek ile ban yemekten kurtuluruz
         }
         
