@@ -37,7 +37,9 @@ const TURKISH_TO_ENGLISH_MAP = {
     "silah": "weapon gun sword firearm",
     "vücut": "body replacer skin textures",
     "yüz": "face preset beauty skin",
-    "saç": "hair hairstyle"
+    "saç": "hair hairstyle",
+    "çıplak": "nude body naked replacer skin adult",
+    "nü": "nude body naked adult"
 };
 
 async function translateQueryWithAI(userQuery) {
