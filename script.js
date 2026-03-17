@@ -164,13 +164,23 @@ document.addEventListener("DOMContentLoaded", () => {
             const iconUrl = mod.picture_url || 'https://api.dicebear.com/6.x/shapes/svg?seed=' + title; 
             
             // Eğer sunucudan modun hangi oyuna ait olduğu geldiyse onu göster
-            let displayGame = mod.category_name || currentGameDomain;
-            if(displayGame === "all") displayGame = "Karışık";
+            let displayDomain = mod.domain_name || mod.category_name || currentGameDomain;
+            let displayGameName = "Karışık";
+
+            if (displayDomain !== "all") {
+                // allGamesList içinde bu oyunun düzgün insan okuyabilir adını bulmaya çalış
+                const foundGame = allGamesList.find(g => g.domain_name === displayDomain);
+                if (foundGame) {
+                    displayGameName = foundGame.name;
+                } else {
+                    displayGameName = displayDomain.charAt(0).toUpperCase() + displayDomain.slice(1);
+                }
+            }
             
-            const categoryName = displayGame.charAt(0).toUpperCase() + displayGame.slice(1) + ' Modu';
+            const categoryName = displayGameName + ' Modu';
             
-            // Mod id'sine göre indirme linkini ayarla (all iken backendden categoryName = gamedomain olarak atanıyordu)
-            const resolvedDomain = mod.category_name || (currentGameDomain !== 'all' ? currentGameDomain : 'skyrimspecialedition');
+            // Mod id'sine göre indirme linkini ayarla
+            const resolvedDomain = mod.domain_name || mod.category_name || (currentGameDomain !== 'all' ? currentGameDomain : 'skyrimspecialedition');
             const projectUrl = `https://www.nexusmods.com/${resolvedDomain}/mods/${mod.mod_id}`;
             const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
 
