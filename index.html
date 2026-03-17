@@ -99,6 +99,36 @@
             </div>
         </div>
 
+        <!-- User Sidebar (Profile Menu) -->
+        <div id="user-sidebar" class="user-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-close" id="close-sidebar-btn"><ion-icon name="close-outline"></ion-icon></div>
+                <img id="sidebar-user-img" src="https://api.dicebear.com/6.x/avataaars/svg?seed=Felix" alt="User">
+                <h3 id="sidebar-user-name">Kullanıcı Adı</h3>
+                <p id="sidebar-user-status">Premium Üye</p>
+            </div>
+            <div class="sidebar-menu">
+                <a href="#" class="menu-item">
+                    <ion-icon name="person-outline"></ion-icon>
+                    <span>Hesap Ayarları</span>
+                </a>
+                <a href="#" class="menu-item" id="sidebar-fav-link">
+                    <ion-icon name="heart-outline"></ion-icon>
+                    <span>Favorilerim</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <ion-icon name="settings-outline"></ion-icon>
+                    <span>Tercihler</span>
+                </a>
+                <hr class="sidebar-divider">
+                <a href="#" class="menu-item logout-link" id="logout-btn">
+                    <ion-icon name="log-out-outline"></ion-icon>
+                    <span>Çıkış Yap</span>
+                </a>
+            </div>
+        </div>
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
     </main>
 
     <script src="script.js"></script>

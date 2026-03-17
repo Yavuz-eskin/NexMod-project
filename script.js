@@ -24,6 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const authToggleText = document.getElementById("auth-toggle-text");
     const authErrorMsg = document.getElementById("auth-error-msg");
 
+    // Sidebar Elementleri
+    const userSidebar = document.getElementById("user-sidebar");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    const closeSidebarBtn = document.getElementById("close-sidebar-btn");
+    const sidebarUserName = document.getElementById("sidebar-user-name");
+    const sidebarUserImg = document.getElementById("sidebar-user-img");
+    const sidebarFavLink = document.getElementById("sidebar-fav-link");
+    const logoutBtn = document.getElementById("logout-btn");
+
     let allGamesList = [];
     let currentModsData = [];
     let currentModIndex = 0;
@@ -146,7 +155,12 @@ document.addEventListener("DOMContentLoaded", () => {
             userNameDisplay.innerText = currentUser.username;
             userNameDisplay.style.display = "block";
             const userImg = document.querySelector("#user-profile-btn img");
-            if(userImg) userImg.src = `https://api.dicebear.com/6.x/avataaars/svg?seed=${currentUser.username}`;
+            if(userImg) {
+                const avatarUrl = `https://api.dicebear.com/6.x/avataaars/svg?seed=${currentUser.username}`;
+                userImg.src = avatarUrl;
+                if(sidebarUserImg) sidebarUserImg.src = avatarUrl;
+            }
+            if(sidebarUserName) sidebarUserName.innerText = currentUser.username;
         } else if (userNameDisplay) {
             userNameDisplay.innerText = "Giriş Yap";
             userNameDisplay.style.display = "block";
@@ -158,10 +172,44 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!currentUser) {
                 openAuthModal();
             } else {
-                // Çıkış Yapma opsiyonu (Basitçe logout)
-                if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
-                    logout();
-                }
+                toggleSidebar();
+            }
+        });
+    }
+
+    function toggleSidebar() {
+        if (!userSidebar) return;
+        userSidebar.classList.toggle("active");
+        if(sidebarOverlay) sidebarOverlay.classList.toggle("active");
+    }
+
+    function closeSidebar() {
+        if(userSidebar) userSidebar.classList.remove("active");
+        if(sidebarOverlay) sidebarOverlay.classList.remove("active");
+    }
+
+    if (closeSidebarBtn) {
+        closeSidebarBtn.addEventListener("click", closeSidebar);
+    }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener("click", closeSidebar);
+    }
+
+    if (sidebarFavLink) {
+        sidebarFavLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            if(navFavorites) navFavorites.click();
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+                closeSidebar();
+                logout();
             }
         });
     }
