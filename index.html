@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexMod | Yapay Zeka Destekli Mod Platformu</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ionicons for icons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+<body>
+    <div class="background-effects">
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            <ion-icon name="cube-outline"></ion-icon>
+            Nex<span>Mod</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" class="active">Keşfet</a></li>
+            <li><a href="#">Benim Modlarım</a></li>
+            <li><a href="#">Topluluk</a></li>
+        </ul>
+        <div class="user-profile">
+            <img src="https://api.dicebear.com/6.x/avataaars/svg?seed=Felix" alt="User">
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section & Smart Search -->
+        <section class="hero">
+            <h1>Oyununu <span>Yapay Zeka</span> ile Şekillendir.</h1>
+            <p>Sadece nasıl bir deneyim istediğini yaz. Doğal dil işleme (NLP) ile aramanı anlasın, sana en uygun modları bulsun.</p>
+            
+            <div class="search-container">
+                <div class="search-box">
+                    <ion-icon name="sparkles-outline" class="ai-icon"></ion-icon>
+                    <input type="text" id="ai-search-input" placeholder="Örn: Skyrim'de FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar...">
+                    <button id="search-btn">Akıllı Ara</button>
+                </div>
+                <div class="search-suggestions">
+                    <span class="suggestion">RPG Savaş Yenilikleri</span>
+                    <span class="suggestion">Sistemi Yormayan Grafikler</span>
+                    <span class="suggestion">Gerçekçi Hava Durumu</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommended for you (Personalized Recommendations) -->
+        <section class="recommendations">
+            <div class="section-header">
+                <h2><ion-icon name="planet-outline"></ion-icon> Sana Özel Kişiselleştirilmiş Öneriler</h2>
+                <p>Oynadığın oyunlar ve beğendiğin mod geçmişine göre yapay zeka tarafından sadece senin için seçildi.</p>
+            </div>
+
+            <div class="mod-grid" id="mod-container">
+                <!-- Mod Card 1 -->
+                <div class="mod-card">
+                    <div class="mod-image">
+                        <img src="./assets/futuristic.png" alt="Cyberpunk Ultra HD">
+                        <div class="ai-match-badge">98% Eşleşme</div>
+                    </div>
+                    <div class="mod-info">
+                        <h3>Cyberpunk Ultra HD Revamp</h3>
+                        <p>Tüm dokuları 4K seviyesine çıkarırken performansı koruyan yapay zeka destekli grafik pakedi.</p>
+                        <!-- Auto-Tags -->
+                        <div class="auto-tags">
+                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="flash-outline"></ion-icon> Performans (AI Etiketi)</span>
+                            <span class="tag">Grafik</span>
+                            <span class="tag">Çevre</span>
+                        </div>
+                        <div class="mod-footer">
+                            <span class="author">by NeoCoder</span>
+                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mod Card 2 -->
+                <div class="mod-card">
+                    <div class="mod-image">
+                        <img src="./assets/fantasy.png" alt="Magic Swords Expansion">
+                        <div class="ai-match-badge">92% Eşleşme</div>
+                    </div>
+                    <div class="mod-info">
+                        <h3>Efsanevi Kılıçlar Genişlemesi</h3>
+                        <p>Oyuna 50'den fazla özel animasyonlu yeni büyü kılıcı ekler. AI animasyon motoru ile uyumlu.</p>
+                        <!-- Auto-Tags -->
+                        <div class="auto-tags">
+                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="color-wand-outline"></ion-icon> Silah/Zırh (AI Etiketi)</span>
+                            <span class="tag">Fantastik</span>
+                        </div>
+                        <div class="mod-footer">
+                            <span class="author">by DragonSlayer</span>
+                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mod Card 3 -->
+                <div class="mod-card">
+                    <div class="mod-image">
+                        <img src="./assets/scifi.png" alt="Clean HUD Pro">
+                        <div class="ai-match-badge">85% Eşleşme</div>
+                    </div>
+                    <div class="mod-info">
+                        <h3>Clean HUD Pro V2</h3>
+                        <p>Arayüzü tamamen özelleştirebileceğiniz, holografik detaylara sahip minimal tasarım.</p>
+                        <!-- Auto-Tags -->
+                        <div class="auto-tags">
+                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="desktop-outline"></ion-icon> Arayüz (AI Etiketi)</span>
+                            <span class="tag">Modern</span>
+                            <span class="tag">Sci-Fi</span>
+                        </div>
+                        <div class="mod-footer">
+                            <span class="author">by UI_Master</span>
+                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loader overlay for simulation -->
+        <div class="ai-loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+            <p>Yapay zeka modları analiz ediyor ve içeriğe göre otomatik etiketliyor...</p>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
