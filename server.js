@@ -16,26 +16,59 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
 
-// Gemini AI Yapılandırması
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Gemini AI Yapılandırması (Eğer anahtar varsa hazır beklesin)
+let genAI, model;
+if (process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+}
+
+// Temel Türkçe - İngilizce Mod Terimleri Sözlüğü (AI çalışmasa bile temel arama desteği için)
+const TURKISH_TO_ENGLISH_MAP = {
+    "kadın": "female woman girl lady character",
+    "erkek": "male man boy character",
+    "kılıç": "sword weapon blade",
+    "zırh": "armor set plate",
+    "ev": "house home player base",
+    "grafik": "graphics enhancement visual textures overhaul",
+    "gökyüzü": "skybox weather clouds atmosphere",
+    "büyü": "magic spells sorcery",
+    "canavar": "monster creature enemy",
+    "silah": "weapon gun sword firearm",
+    "vücut": "body replacer skin textures",
+    "yüz": "face preset beauty skin",
+    "saç": "hair hairstyle"
+};
 
 async function translateQueryWithAI(userQuery) {
+    const lowQuery = userQuery.toLowerCase().trim();
+    
+    // 1. Önce sözlükte var mı bak (Hızlı ve Kesin Sonuç)
+    if (TURKISH_TO_ENGLISH_MAP[lowQuery]) {
+        console.log(`📚 Sözlükten Bulundu: ${lowQuery} -> ${TURKISH_TO_ENGLISH_MAP[lowQuery]}`);
+        return TURKISH_TO_ENGLISH_MAP[lowQuery];
+    }
+
+    // 2. Sözlükte yoksa Gemini AI'yı dene
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
+        console.warn("⚠️ GEMINI_API_KEY eksik. AI çevirisi yapılamıyor. Lütfen .env dosyasını kontrol edin.");
+        return userQuery;
+    }
+
     try {
         const prompt = `Sen NexMod sitesinin zeki arama asistanısın. Kullanıcı Türkçe veya karışık bir dilde oyun modu arıyor. 
         Görevin: Kullanıcının ne aramak istediğini anla ve bunu NexusMods veritabanında en iyi sonucu verecek profesyonel İngilizce mod terimlerine çevir.
-        Sadece İngilizce karşılığını döndür, açıklama yapma.
-        Örnek: "grafik geliştiren modlar" -> "graphics enhancement overhaul"
-        Örnek: "daha gerçekçi kılıçlar" -> "realistic swords weapon"
-        Örnek: "gökyüzü modu" -> "skybox weather atmosphere"
+        Geniş kapsamlı düşün; mesela "kadın" aranıyorsa "female, woman, beauty, character" gibi ilgili terimleri de ekle.
+        Sadece İngilizce karşılıklarını (virgülle ayırarak veya boşlukla) döndür, açıklama yapma.
+        
         Kullanıcı Sorgusu: "${userQuery}"`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        return response.text().trim();
+        return response.text().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
     } catch (error) {
         console.error("AI Çeviri Hatası:", error);
-        return userQuery; // Hata durumunda orijinaliyle devam et
+        return userQuery;
     }
 }
 
