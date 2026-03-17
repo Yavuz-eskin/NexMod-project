@@ -277,6 +277,17 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const currentPassword = document.getElementById("full-current-password").value;
             const newPassword = document.getElementById("full-new-password").value;
+            const newPasswordConfirm = document.getElementById("full-new-password-confirm").value;
+
+            if (newPassword !== newPasswordConfirm) {
+                showAccountMsg("Yeni şifreler birbiriyle uyuşmuyor!", "error");
+                return;
+            }
+
+            if (newPassword.length < 5) {
+                showAccountMsg("Yeni şifre en az 5 karakter olmalıdır.", "error");
+                return;
+            }
 
             try {
                 const res = await fetch('/api/user/change-password', {
@@ -434,10 +445,16 @@ document.addEventListener("DOMContentLoaded", () => {
         authToggleLink.addEventListener("click", (e) => {
             e.preventDefault();
             isRegisterMode = !isRegisterMode;
-            authTitle.innerText = isRegisterMode ? "Kayıt Ol" : "Giriş Yap";
+            authTitle.innerText = isRegisterMode ? "Hesap Oluştur" : "Hoş Geldiniz";
             authSubmitBtn.innerText = isRegisterMode ? "Kayıt Ol" : "Giriş Yap";
-            authToggleText.innerText = isRegisterMode ? "Zaten hesabın var mı? " : "Hesabın yok mu? ";
-            authToggleLink.innerText = isRegisterMode ? "Giriş Yap" : "Kayıt Ol";
+            authToggleText.innerText = isRegisterMode ? "Zaten bir hesabınız var mı? " : "Henüz bir hesabınız yok mu? ";
+            authToggleLink.innerText = isRegisterMode ? "Giriş Yapın" : "Hemen Kaydolun";
+            
+            const confirmInput = document.getElementById("auth-password-confirm");
+            if(confirmInput) {
+                confirmInput.style.display = isRegisterMode ? "block" : "none";
+                confirmInput.required = isRegisterMode;
+            }
             if(authErrorMsg) authErrorMsg.style.display = "none";
         });
     }
@@ -447,6 +464,15 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const username = document.getElementById("auth-username").value;
             const password = document.getElementById("auth-password").value;
+            const passwordConfirm = document.getElementById("auth-password-confirm").value;
+
+            if (isRegisterMode && password !== passwordConfirm) {
+                if(authErrorMsg) {
+                    authErrorMsg.innerText = "Şifreler uyuşmuyor!";
+                    authErrorMsg.style.display = "block";
+                }
+                return;
+            }
             
             const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
             

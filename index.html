@@ -124,6 +124,10 @@
                                 <label>Yeni Şifre</label>
                                 <input type="password" id="full-new-password" placeholder="********" required>
                             </div>
+                            <div class="input-group">
+                                <label>Yeni Şifre (Tekrar)</label>
+                                <input type="password" id="full-new-password-confirm" placeholder="********" required>
+                            </div>
                             <button type="submit" class="primary-btn">Şifreyi Güncelle</button>
                         </form>
                     </div>
@@ -173,6 +177,7 @@
                 <form id="auth-form" autocomplete="off">
                     <input type="text" id="auth-username" placeholder="Kullanıcı Adı" required autocomplete="off">
                     <input type="password" id="auth-password" placeholder="Şifre" required autocomplete="off">
+                    <input type="password" id="auth-password-confirm" placeholder="Şifre Tekrar" style="display: none;" autocomplete="off">
                     <button type="submit" id="auth-submit-btn">Giriş Yap</button>
                     <p id="auth-error-msg" style="color: #ef4444; font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
                 </form>
