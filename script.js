@@ -25,7 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!gameSearchInput) return;
         
         try {
-            const res = await fetch('http://localhost:3000/api/games');
+            // Sunucu nerede çalışıyorsa (Localhost veya Render), relatif path sayesinde oraya istek atar
+            const res = await fetch('/api/games');
             if (res.ok) {
                 const games = await res.json();
                 
@@ -226,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             // Kendi yazdığımız Node.js arka plan (Backend) sunucumuza özel proxy isteği.
             currentGameDomain = gameSelectValue ? gameSelectValue.value : "all";
-            const apiUrl = `http://localhost:3000/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
+            const apiUrl = `/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
             
             const response = await fetch(apiUrl);
             

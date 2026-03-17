@@ -13,6 +13,9 @@ const PORT = process.env.PORT || 3000;
 // Front-end (HTML/JS) dosyamızın bu Node.js sunucusuna istek atabilmesi için CORS aktif edilir
 app.use(cors());
 
+// Ön yüz dosyalarını (HTML, CSS, JS vb.) sunucudan servis et (Cloud dağıtımı için gerekli)
+app.use(express.static(__dirname));
+
 // MongoDB Database Bağlantısı
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
