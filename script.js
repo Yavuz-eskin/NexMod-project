@@ -882,27 +882,36 @@ document.addEventListener("DOMContentLoaded", () => {
             // Veriyi anında ekrana bas (eski yapay bekletme kaldırıldı)
             container.innerHTML = ''; // Eski elemanları temizle
             
-            const modsArray = data.mods || data.hits || data || []; 
+            const modsArray = data.mods || []; 
             const activeQuery = (window.lastActiveQuery || "").toLowerCase();
+            const aiQuery = (data.aiQuery || "").toLowerCase();
 
             // Tüm dizinin AI eşleşme oranını önceden hesapla ve modlara göm
             modsArray.forEach(mod => {
                 const title = (mod.name || mod.title || '').toLowerCase();
                 const description = (mod.summary || mod.description || '').toLowerCase();
                 
-                let matchPercent = 99;
-                if (activeQuery.length > 1) {
-                    if (title === activeQuery) matchPercent = 99;
-                    else if (title.includes(activeQuery)) matchPercent = 90 + (mod.mod_id % 9);
-                    else if (description.includes(activeQuery)) matchPercent = 80 + (mod.mod_id % 10);
-                    else matchPercent = 70 + (mod.mod_id % 10);
+                let matchPercent = 0;
+
+                if (mod.score) {
+                    // MongoDB Text Score'u 75-99 arası bir yüzdeye normalize et
+                    // Genelde skorlar 0.5 ile 5.0 arası değişir
+                    matchPercent = 75 + Math.min(Math.floor(mod.score * 4.5), 24);
                 } else {
-                    matchPercent = 85 + (mod.mod_id % 15); 
+                    // Fallback (eğer skor yoksa veya manuel hesap gerekiyorsa)
+                    if (activeQuery && (title.includes(activeQuery) || description.includes(activeQuery))) {
+                        matchPercent = 90 + (mod.mod_id % 9);
+                    } else if (aiQuery && (title.includes(aiQuery) || description.includes(aiQuery))) {
+                        matchPercent = 85 + (mod.mod_id % 10);
+                    } else {
+                        matchPercent = 70 + (mod.mod_id % 20);
+                    }
                 }
                 mod.matchPercent = matchPercent;
             });
 
             // Hesaplanan bu AI Oranına göre diziyi EN BÜYÜKTEN EN KÜÇÜĞE % olarak sırala!
+            // (Sunucu zaten sıralıyor ama biz matchPercent'e göre burda da emin olalım)
             modsArray.sort((a, b) => b.matchPercent - a.matchPercent);
 
             currentModsData = modsArray;
@@ -922,8 +931,13 @@ document.addEventListener("DOMContentLoaded", () => {
             // Başlıkları güncelle
             const sectionHeaderH2 = document.querySelector(".section-header h2");
             const sectionHeaderP = document.querySelector(".section-header p");
-            sectionHeaderH2.innerHTML = '<ion-icon name="logo-nodejs"></ion-icon> Nexus Mods Sunucusundan Arama Sonucu';
-            sectionHeaderP.innerHTML = 'Kendi veritabanınızdan filtreler kullanılarak listelendi!';
+            sectionHeaderH2.innerHTML = `<ion-icon name="sparkles-outline" style="color: #7c3aed;"></ion-icon> Yapay Zeka Arama Sonuçları`;
+            
+            let descriptionHTML = `Veritabanımızda 1000 mod taranarak en iyi sonuçlar listelendi.`;
+            if (data.aiQuery) {
+                descriptionHTML = `<ion-icon name="language-outline"></ion-icon> Yapay Zeka şunu aradı: <strong style="color: #7c3aed;">"${data.aiQuery}"</strong>`;
+            }
+            sectionHeaderP.innerHTML = descriptionHTML;
             
             // Arama kutusunu boşalt ve AI yükleme perdesini kaldır
             if (inputField) inputField.value = '';

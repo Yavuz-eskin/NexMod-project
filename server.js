@@ -149,18 +149,19 @@ app.get('/api/search', async (req, res) => {
         }
         
         // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
-        let filteredMods = await Mod.find(filterCondition).limit(1000).lean();
+        // Text search score (relevance) ekliyoruz ve buna göre sıralıyoruz
+        let filteredMods = await Mod.find(
+            filterCondition,
+            { score: { $meta: "textScore" } }
+        ).sort({ score: { $meta: "textScore" } }).limit(1000).lean();
 
-        // Eğer arama çok kısaysa (query yoksa), vitrin/popüler modları göster (eski fallback)
-        if (lowerQuery.length < 2) {
-            let fallbackFilter = gameDomain !== 'all' ? { $or: [{ domain_name: gameDomain }, { category_name: gameDomain }] } : {};
-            filteredMods = await Mod.find(fallbackFilter).limit(1000).lean();
-        }
+        // Sonuçları her seferinde aralarında hafif karıştırarak listele (Eğer arama puanları çok yakınsa çeşitlilik sağlar)
+        // filteredMods = filteredMods.sort(() => Math.random() - 0.5);
 
-        // Sonuçları her seferinde aralarında hafif karıştırarak listele
-        filteredMods.sort(() => Math.random() - 0.5);
-
-        res.json({ mods: filteredMods });
+        res.json({ 
+            mods: filteredMods, 
+            aiQuery: aiEnhancedQuery // İstemciye neyi aradığımızı da söyleyelim
+        });
 
     } catch (error) {
         console.error("Bulut (MongoDB Atlas) Veritabanı Arama Hatası:");
