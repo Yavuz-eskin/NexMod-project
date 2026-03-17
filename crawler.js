@@ -113,8 +113,8 @@ async function crawlMods() {
         let validModsCount = 0; // Bu sayaç 250 olana kadar devam edecek
         let modId = 1;
 
-        // Tam olarak 250 adet geçerli mod bulana kadar (veya sonsuz döngüyü önlemek için 1500 id denemesi bitene kadar)
-        while (validModsCount < 250 && modId <= 1500) {
+        // Tam olarak 250 adet geçerli mod bulana kadar (veya günlük kotayı sömürmemek için max 400 id denemesi bitene kadar)
+        while (validModsCount < 250 && modId <= 400) {
             // VERİTABANI: Bu ID veritabanımızda zaten var mı? Varsa API'ye hiç gidip kota harcama!
             const exists = await Mod.exists({ domain_name: game, mod_id: modId });
             if (exists) {
@@ -150,11 +150,17 @@ async function crawlMods() {
                 deepInsertedCount++;
 
             } catch (error) {
-                // Silinmiş/Premium veya 404 modları vb. dert etmeden atla
+                // Eğer hata 429 (Too Many Requests - Günlük Limit Bitti) ise tüm döngüyü kırıp çık!
+                if (error.response && error.response.status === 429) {
+                    console.error("⛔ KRİTİK UYARI: NexusMods Günlük (10.000) İstek Limiti Doldu! Bot uykuya alınıyor.");
+                    return (insertedTrendCount + deepInsertedCount); // Direkt uygulamayı bitir ve raporla
+                }
+                
+                // Diğer Silinmiş/Premium veya 404 hatalarıysa dert etmeden atla
             }
 
             modId++;
-            await sleep(500); // Saniyede 2 istek ile ban yemekten kurtuluruz
+            await sleep(500); // Saniyede 2 istek ile ban yemekten kurtuluruz (0.5 saniye bekleme)
         }
         
         if(gameDeepAddedCount > 0) {
