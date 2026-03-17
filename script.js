@@ -341,8 +341,8 @@ document.addEventListener("DOMContentLoaded", () => {
             sectionHeaderP.innerHTML = 'Kendi veritabanınızdan filtreler kullanılarak listelendi!';
             
             // Arama kutusunu boşalt ve AI yükleme perdesini kaldır
-            if (!isInitial) inputField.value = '';
-            overlay.classList.remove("active");
+            if (inputField) inputField.value = '';
+            if (overlay) overlay.classList.remove("active");
             
         } catch (error) {
             console.error("Node.js Proxy Bağlantı Hatası:", error);
