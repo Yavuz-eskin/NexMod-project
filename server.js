@@ -115,6 +115,34 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
+// Yeni Eklenen "Çok Sevilenler" Menüsü için Endpoint (En Çok İndirilenleri Getirir)
+app.get('/api/top-mods', async (req, res) => {
+    const gameDomain = req.query.game || 'all';
+
+    try {
+        let filterCondition = {};
+
+        if (gameDomain !== 'all') {
+            filterCondition = {
+                $or: [
+                    { domain_name: gameDomain },
+                    { category_name: gameDomain }
+                ]
+            };
+        }
+
+        // İndirme sayısına göre tersten (En yüksekten en düşüğe) sıralayıp ilk 60'ı alır
+        let topMods = await Mod.find(filterCondition).sort({ mod_downloads: -1 }).limit(60).lean();
+
+        res.json({ mods: topMods });
+
+    } catch (error) {
+        console.error("En Çok Sevilenler API Hatası:");
+        console.error(error.message);
+        res.status(500).json({ error: 'Popüler modlar çekilirken bir hata oluştu.' });
+    }
+});
+
 // Tüm oyunları çekmek için yeni endpoint
 app.get('/api/games', async (req, res) => {
     const apiKey = process.env.NEXUS_API_KEY;

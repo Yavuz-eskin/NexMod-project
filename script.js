@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const gameSearchInput = document.getElementById("game-search-input");
     const gameSelectValue = document.getElementById("game-select-value");
     const gameListDropdown = document.getElementById("game-list-dropdown");
+    const navDiscover = document.getElementById("nav-discover");
+    const navTop = document.getElementById("nav-top");
 
     let allGamesList = [];
     let currentModsData = [];
@@ -118,6 +120,38 @@ document.addEventListener("DOMContentLoaded", () => {
     // Uygulama yüklendiğinde ilk verileri çek
     loadInitialData();
 
+    // -- Menü Yönlendirmeleri (Keşfet / Çok Sevilenler) --
+    if (navTop) {
+        navTop.addEventListener("click", (e) => {
+            e.preventDefault();
+            if(navDiscover) navDiscover.classList.remove("active");
+            navTop.classList.add("active");
+            
+            const sectionHeaderH2 = document.querySelector(".section-header h2");
+            const sectionHeaderP = document.querySelector(".section-header p");
+            if(sectionHeaderH2) sectionHeaderH2.innerHTML = '<ion-icon name="heart"></ion-icon> Topluluğun Çok Sevdiği Modlar';
+            if(sectionHeaderP) sectionHeaderP.innerHTML = 'Veritabanımızdaki milyonlarca kere indirilmiş, oyuncuların favorisi olan en popüler modlar!';
+            if(inputField) inputField.value = '';
+            
+            fetchTopMods();
+        });
+    }
+
+    if (navDiscover) {
+        navDiscover.addEventListener("click", (e) => {
+            e.preventDefault();
+            if(navTop) navTop.classList.remove("active");
+            navDiscover.classList.add("active");
+            
+            const sectionHeaderH2 = document.querySelector(".section-header h2");
+            const sectionHeaderP = document.querySelector(".section-header p");
+            if(sectionHeaderH2) sectionHeaderH2.innerHTML = '<ion-icon name="planet-outline"></ion-icon> Sana Özel Kişiselleştirilmiş Öneriler';
+            if(sectionHeaderP) sectionHeaderP.innerHTML = 'Oynadığın oyunlar ve beğendiğin mod geçmişine göre yapay zeka tarafından sadece senin için seçildi.';
+            
+            triggerAISearch(true);
+        });
+    }
+
     function renderMoreMods() {
         if (!currentModsData || currentModsData.length === 0) return;
         
@@ -140,6 +174,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const projectUrl = `https://www.nexusmods.com/${resolvedDomain}/mods/${mod.mod_id}`;
             const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
 
+            // İndirme sayısını şık bir M (Milyon) veya K (Bin) formatına çevir
+            let downloadBadge = "";
+            if (mod.mod_downloads) {
+                let dlCount = mod.mod_downloads;
+                let dlFormatted = dlCount;
+                if(dlCount > 1000000) dlFormatted = (dlCount / 1000000).toFixed(1) + "M";
+                else if(dlCount > 1000) dlFormatted = (dlCount / 1000).toFixed(1) + "K";
+                
+                downloadBadge = `<span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;"><ion-icon name="download-outline"></ion-icon> ${dlFormatted}</span>`;
+            }
+
             const cardHtml = `
                 <div class="mod-card">
                     <div class="mod-image" style="background-color: #1a1c29;">
@@ -155,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <ion-icon name="flash-outline"></ion-icon> Nexus API
                             </span>
                             <span class="tag">${categoryName}</span>
+                            ${downloadBadge}
                         </div>
                         
                         <div class="mod-footer">
@@ -278,6 +324,57 @@ document.addEventListener("DOMContentLoaded", () => {
                                       <p style="color: #94a3b8; margin-top: 1rem;">
                                           Node.js sunucusunu terminalden (<code>node server.js</code>) başlattığınıza emin olun. <br/>
                                           (Hata detayı: ${error.message})
+                                      </p>
+                                   </div>`;
+            container.style.opacity = '1';
+        }
+    }
+
+    async function fetchTopMods() {
+        if (overlay) overlay.classList.add("active");
+        
+        container.style.transition = '0.5s ease';
+        container.style.opacity = '0';
+        container.style.transform = 'translateY(20px)';
+        
+        try {
+            currentGameDomain = gameSelectValue ? gameSelectValue.value : "all";
+            const apiUrl = `/api/top-mods?game=${currentGameDomain}`;
+            
+            const response = await fetch(apiUrl);
+            
+            if (!response.ok) {
+                throw new Error('Sunucu hatası. Popüler modlar getirilemedi.');
+            }
+            
+            const data = await response.json();
+            
+            setTimeout(() => {
+                container.innerHTML = ''; 
+                
+                const modsArray = data.mods || []; 
+                currentModsData = modsArray;
+                currentModIndex = 0;
+
+                if (Array.isArray(modsArray) && modsArray.length > 0) {
+                    renderMoreMods();
+                } else {
+                    container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Veritabanında bu oyun için kayıtlı "Sevilen Mod" bulunamadı.</p>`;
+                    if(loadMoreBtn) loadMoreBtn.style.display = "none";
+                }
+                
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+                overlay.classList.remove("active");
+                
+            }, 500);
+            
+        } catch (error) {
+            console.error("Top Mods Bağlantı Hatası:", error);
+            overlay.classList.remove("active");
+            container.innerHTML = `<div style="text-align: center; width: 100%; padding: 2rem;">
+                                      <p style="color: #ef4444; font-size: 1.2rem; font-weight: 500;">
+                                          Modlar çekilirken arka plan sunucusunda hata oluştu (Proxy Error).
                                       </p>
                                    </div>`;
             container.style.opacity = '1';
