@@ -136,9 +136,11 @@ app.get('/api/games', async (req, res) => {
             headers: { 'accept': 'application/json', 'apikey': apiKey }
         });
 
-        // İstersek tüm listeyi (binlerce oyun olabilir), ya da çok oynanan oyunları yollayabiliriz.
-        // Hepsini frontend'e yollayalım, frontend alfabetik sıralayabilir
-        res.json(response.data);
+        // 0.5 Milyon (500,000)'dan az indirmesi olan oyunları sistemden komple siliyoruz.
+        const popularGamesOnly = response.data.filter(game => game.downloads && game.downloads >= 500000);
+        
+        // Hepsini frontend'e yollayalım (Frontend alfabetik veya indirme sayısına göre sıralıyor)
+        res.json(popularGamesOnly);
 
     } catch (error) {
         console.error("Nexus API'den oyunları çekerken hata oluştu:", error.message);

@@ -6,19 +6,7 @@ const Mod = require('./models/Mod');
 const API_KEY = process.env.NEXUS_API_KEY;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Projemizin yerel veri tabanını oluşturacağımız popüler oyunlar havuzu
-const TOP_GAMES = [
-    'skyrimspecialedition',
-    'fallout4',
-    'cyberpunk2077',
-    'stardewvalley',
-    'witcher3',
-    'baldursgate3',
-    'starcitizen',
-    'palworld',
-    'eldenring',
-    'hogwartslegacy'
-];
+// Projemizin yerel veri tabanını oluşturacağımız popüler oyunlar havuzu dinamik olarak yüklenecektir.
 
 async function crawlMods() {
     if (!API_KEY || !MONGO_URI) {
@@ -37,6 +25,22 @@ async function crawlMods() {
 
     console.log("Nexus Crawler (Bot) başlatılıyor... Veritabanı toplanıyor, lütfen bekleyin.");
     
+    let TOP_GAMES = [];
+    try {
+        console.log("Nexus API'den oyunların listesi çekiliyor...");
+        const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', {
+            headers: { 'accept': 'application/json', 'apikey': API_KEY }
+        });
+        
+        // Sadece 500.000 (Yarım Milyon) ve üstü indirmesi olan Popüler Oyunları Filtreliyoruz!
+        const popularGames = gamesRes.data.filter(g => g.downloads && g.downloads >= 500000);
+        TOP_GAMES = popularGames.map(g => g.domain_name);
+        console.log(`Filtreleme tamamlandı: Toplam ${TOP_GAMES.length} Adet (Popüler) Oyun taranacak.`);
+    } catch (err) {
+        console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
+        return;
+    }
+
     let allMods = [];
     let seenIds = new Set();
     
@@ -57,6 +61,9 @@ async function crawlMods() {
                     headers: { 'accept': 'application/json', 'apikey': API_KEY }
                 }).catch(e => { return {data: []}; }); 
                 
+                // Sunucuyu boğmamak için ufak bir bekleme süresi
+                await new Promise(resolve => setTimeout(resolve, 300));
+
                 if (res.data && Array.isArray(res.data)) {
                     res.data.forEach(mod => {
                         // Eğer mod ismi yoksa (İsimsiz Mod durumları) veritabanına alma
