@@ -481,6 +481,39 @@ body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
+.favorite-btn {
+    position: absolute;
+    top: 1.2rem;
+    left: 1.2rem;
+    background: rgba(20, 23, 38, 0.4);
+    color: #94a3b8;
+    padding: 0.5rem;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.favorite-btn:hover {
+    transform: scale(1.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.favorite-btn.active {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.6);
+    background: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
 .ai-match-badge::before {
     content: '';
     display: inline-block;

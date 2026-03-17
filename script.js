@@ -10,11 +10,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const gameListDropdown = document.getElementById("game-list-dropdown");
     const navDiscover = document.getElementById("nav-discover");
     const navTop = document.getElementById("nav-top");
+    const navFavorites = document.getElementById("nav-favorites");
 
     let allGamesList = [];
     let currentModsData = [];
     let currentModIndex = 0;
     let currentGameDomain = "all";
+    let favoritesArray = JSON.parse(localStorage.getItem('nexmod_favorites')) || [];
 
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener("click", () => {
@@ -125,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         navTop.addEventListener("click", (e) => {
             e.preventDefault();
             if(navDiscover) navDiscover.classList.remove("active");
+            if(navFavorites) navFavorites.classList.remove("active");
             navTop.classList.add("active");
             
             const sectionHeaderH2 = document.querySelector(".section-header h2");
@@ -141,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
         navDiscover.addEventListener("click", (e) => {
             e.preventDefault();
             if(navTop) navTop.classList.remove("active");
+            if(navFavorites) navFavorites.classList.remove("active");
             navDiscover.classList.add("active");
             
             const sectionHeaderH2 = document.querySelector(".section-header h2");
@@ -149,6 +153,33 @@ document.addEventListener("DOMContentLoaded", () => {
             if(sectionHeaderP) sectionHeaderP.innerHTML = 'Oynadığın oyunlar ve beğendiğin mod geçmişine göre yapay zeka tarafından sadece senin için seçildi.';
             
             triggerAISearch(true);
+        });
+    }
+
+    if (navFavorites) {
+        navFavorites.addEventListener("click", (e) => {
+            e.preventDefault();
+            if(navDiscover) navDiscover.classList.remove("active");
+            if(navTop) navTop.classList.remove("active");
+            navFavorites.classList.add("active");
+            
+            const sectionHeaderH2 = document.querySelector(".section-header h2");
+            const sectionHeaderP = document.querySelector(".section-header p");
+            if(sectionHeaderH2) sectionHeaderH2.innerHTML = '<ion-icon name="heart" style="color: #ef4444;"></ion-icon> Benim Kaydettiğim Modlar';
+            if(sectionHeaderP) sectionHeaderP.innerHTML = 'Beğendiğin ve kalbine dokunan tüm modlar burada güvenle saklanıyor.';
+            if(inputField) inputField.value = '';
+            
+            container.innerHTML = ''; 
+            // Favoriler Local Storage'dan zaten her tıklamada en güncel haliyle çekilir 
+            currentModsData = favoritesArray;
+            currentModIndex = 0;
+            
+            if (favoritesArray.length === 0) {
+                container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Henüz hiç favori modun yok. Sağ üstteki kalp butonlarına tıklayarak mod kaydetmeye başla!</p>`;
+                if(loadMoreBtn) loadMoreBtn.style.display = "none";
+            } else {
+                renderMoreMods();
+            }
         });
     }
 
@@ -196,11 +227,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 downloadBadge = `<span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;"><ion-icon name="download-outline"></ion-icon> ${dlFormatted}</span>`;
             }
+            // Local Storage'da bu mod kayıtlı mı kontrolü (Kalp ikonunu aktif etmek için)
+            const isFav = favoritesArray.some(f => f.mod_id === mod.mod_id);
+            const favClass = isFav ? "active" : "";
+            
+            // Tıklayınca Favoriye ekleyebilmek için modun json halini base64 veya uri formatında butona gömelim
+            const modEncoded = encodeURIComponent(JSON.stringify(mod));
 
             const cardHtml = `
                 <div class="mod-card">
                     <div class="mod-image" style="background-color: #1a1c29;">
                         <img src="${iconUrl}" alt="${title}" style="object-fit: cover; ">
+                        
+                        <div class="favorite-btn ${favClass}" data-mod="${modEncoded}" title="Favorilere Ekle/Çıkar">
+                            <ion-icon name="heart-outline"></ion-icon>
+                            <ion-icon name="heart" class="hidden-icon"></ion-icon>
+                        </div>
+
                         <div class="ai-match-badge">%${matchPercent} AI Eşleşmesi</div>
                     </div>
                     <div class="mod-info">
@@ -236,6 +279,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadMoreBtn.style.display = "inline-flex";
             }
         }
+    }
+
+    // Favori - Kalp butonlarına Tıklama Mantığı (Event Delegation - Live Dom Manipulation)
+    if (container) {
+        container.addEventListener("click", (e) => {
+            const btn = e.target.closest(".favorite-btn");
+            if (!btn) return; // Kalbe tıklanmadıysa çık
+            
+            e.preventDefault();
+            e.stopPropagation();
+
+            const modData = JSON.parse(decodeURIComponent(btn.getAttribute("data-mod")));
+            const existingIndex = favoritesArray.findIndex(f => f.mod_id === modData.mod_id);
+
+            if (existingIndex >= 0) {
+                // Mod zaten favorilerde, kalp KIRILDI (Çıkart)
+                favoritesArray.splice(existingIndex, 1);
+                btn.classList.remove("active");
+                
+                // Eğer bizzat "Favorilerim" sayfasındayken çıkarttıysa UI'ı anında gizle (Animasyonlu ve Temiz)
+                if (navFavorites && navFavorites.classList.contains("active")) {
+                    const card = btn.closest(".mod-card");
+                    if (card) card.style.display = "none";
+                    
+                    if (favoritesArray.length === 0) {
+                        container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Henüz hiç favori modun yok. Sağ üstteki kalp butonlarına tıklayarak mod kaydetmeye başla!</p>`;
+                        if(loadMoreBtn) loadMoreBtn.style.display = "none";
+                    }
+                }
+            } else {
+                // Mod favorilerde yok, Kalp eklendi!
+                favoritesArray.push(modData);
+                btn.classList.add("active");
+            }
+            
+            // Değişikliği anında tarayıcı hafızasına (Local Storage) kaydet
+            localStorage.setItem("nexmod_favorites", JSON.stringify(favoritesArray));
+        });
     }
 
     // Click suggestions to quickly fill input
