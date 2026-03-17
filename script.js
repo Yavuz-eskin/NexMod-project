@@ -291,10 +291,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Yükleme ekranını göster
         if (overlay) overlay.classList.add("active");
 
-        // Gerçek API'ye istek atmadan önce biraz AI "düşünme" efekti verelim
+        // Gerçek API'ye istek atmadan önce kısa bir UI efekti
         setTimeout(() => {
             searchNexusMods(query);
-        }, 1200); 
+        }, 100); 
     }
 
     async function searchNexusMods(query) {
@@ -316,35 +316,33 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const data = await response.json();
             
-            setTimeout(() => {
-                container.innerHTML = ''; // Eski elemanları temizle
-                
-                const modsArray = data.mods || data.hits || data || []; 
-                currentModsData = modsArray;
-                currentModIndex = 0;
+            // Veriyi anında ekrana bas (eski yapay bekletme kaldırıldı)
+            container.innerHTML = ''; // Eski elemanları temizle
+            
+            const modsArray = data.mods || data.hits || data || []; 
+            currentModsData = modsArray;
+            currentModIndex = 0;
 
-                if (Array.isArray(modsArray) && modsArray.length > 0) {
-                    renderMoreMods();
-                } else {
-                    container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Yapay Zeka bu oyunda herhangi bir Nexus Modu bulamadı.</p>`;
-                    if(loadMoreBtn) loadMoreBtn.style.display = "none";
-                }
-                
-                // Yeni içeriği göster
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-                
-                // Başlıkları güncelle
-                const sectionHeaderH2 = document.querySelector(".section-header h2");
-                const sectionHeaderP = document.querySelector(".section-header p");
-                sectionHeaderH2.innerHTML = '<ion-icon name="logo-nodejs"></ion-icon> Nexus Mods Sunucusundan Bağlanıldı';
-                sectionHeaderP.innerHTML = 'Kendi Node.js sunucunuz kullanılarak <b>Nexus API</b> üzerinden güvenli şekilde gerçek modlar listelendi!';
-                
-                // Arama kutusunu boşalt ve AI yükleme perdesini kaldır
-                inputField.value = '';
-                overlay.classList.remove("active");
-                
-            }, 500);
+            if (Array.isArray(modsArray) && modsArray.length > 0) {
+                renderMoreMods();
+            } else {
+                container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Yapay Zeka bu oyunda herhangi bir Nexus Modu bulamadı.</p>`;
+                if(loadMoreBtn) loadMoreBtn.style.display = "none";
+            }
+            
+            // Yeni içeriği göster
+            container.style.opacity = '1';
+            container.style.transform = 'translateY(0)';
+            
+            // Başlıkları güncelle
+            const sectionHeaderH2 = document.querySelector(".section-header h2");
+            const sectionHeaderP = document.querySelector(".section-header p");
+            sectionHeaderH2.innerHTML = '<ion-icon name="logo-nodejs"></ion-icon> Nexus Mods Sunucusundan Arama Sonucu';
+            sectionHeaderP.innerHTML = 'Kendi veritabanınızdan filtreler kullanılarak listelendi!';
+            
+            // Arama kutusunu boşalt ve AI yükleme perdesini kaldır
+            if (!isInitial) inputField.value = '';
+            overlay.classList.remove("active");
             
         } catch (error) {
             console.error("Node.js Proxy Bağlantı Hatası:", error);
@@ -383,25 +381,23 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const data = await response.json();
             
-            setTimeout(() => {
-                container.innerHTML = ''; 
-                
-                const modsArray = data.mods || []; 
-                currentModsData = modsArray;
-                currentModIndex = 0;
+            // Eski yapay bekletme kaldırıldı, direkt renderlanıyor
+            container.innerHTML = ''; 
+            
+            const modsArray = data.mods || []; 
+            currentModsData = modsArray;
+            currentModIndex = 0;
 
-                if (Array.isArray(modsArray) && modsArray.length > 0) {
-                    renderMoreMods();
-                } else {
-                    container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Veritabanında bu oyun için kayıtlı "Sevilen Mod" bulunamadı.</p>`;
-                    if(loadMoreBtn) loadMoreBtn.style.display = "none";
-                }
-                
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-                overlay.classList.remove("active");
-                
-            }, 500);
+            if (Array.isArray(modsArray) && modsArray.length > 0) {
+                renderMoreMods();
+            } else {
+                container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Veritabanında bu oyun için kayıtlı "Sevilen Mod" bulunamadı.</p>`;
+                if(loadMoreBtn) loadMoreBtn.style.display = "none";
+            }
+            
+            container.style.opacity = '1';
+            container.style.transform = 'translateY(0)';
+            overlay.classList.remove("active");
             
         } catch (error) {
             console.error("Top Mods Bağlantı Hatası:", error);

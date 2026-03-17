@@ -71,25 +71,8 @@ app.get('/api/search', async (req, res) => {
         
         // Eğer aranan kelime 2 karakterden uzun veya eşitse filtrelemeyi yap
         if (lowerQuery.length >= 2) {
-            // MongoDB'nin döküman tabanlı gelişmiş metin aramasını Regex ile simüle ediyoruz
-            filterCondition.$or = filterCondition.$or || [];
-            if(filterCondition.$or.length > 0){
-                 filterCondition.$and = [
-                     { $or: filterCondition.$or },
-                     { $or: [
-                        { name: { $regex: lowerQuery, $options: 'i' } },
-                        { summary: { $regex: lowerQuery, $options: 'i' } },
-                        { description: { $regex: lowerQuery, $options: 'i' } }
-                     ]}
-                 ];
-                 delete filterCondition.$or;
-            } else {
-                 filterCondition.$or = [
-                        { name: { $regex: lowerQuery, $options: 'i' } },
-                        { summary: { $regex: lowerQuery, $options: 'i' } },
-                        { description: { $regex: lowerQuery, $options: 'i' } }
-                 ];
-            }
+            // regex yerine Mod schema'sında oluşturduğumuz text indexini kullanıyoruz. API'den devasa hız kazandırır.
+            filterCondition.$text = { $search: lowerQuery };
         }
         
         // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 60'ı)
