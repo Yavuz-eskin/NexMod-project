@@ -34,7 +34,8 @@
             <li><a href="#" id="nav-top">Çok Sevilenler</a></li>
             <li><a href="#" id="nav-favorites" style="color: #ef4444;"><ion-icon name="heart"></ion-icon> Favorilerim</a></li>
         </ul>
-        <div class="user-profile">
+        <div class="user-profile" id="user-profile-btn" style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <span id="user-name-display" style="font-weight: 600; font-size: 0.95rem; display: none;">Giriş Yap</span>
             <img src="https://api.dicebear.com/6.x/avataaars/svg?seed=Felix" alt="User">
         </div>
     </nav>
@@ -79,6 +80,25 @@
             <div class="spinner"></div>
             <p>Yapay zeka modları analiz ediyor ve içeriğe göre otomatik etiketliyor...</p>
         </div>
+
+        <!-- Auth Modal (Login/Register) -->
+        <div id="auth-modal" class="auth-modal-overlay" style="display: none;">
+            <div class="auth-modal-content">
+                <span class="close-auth-modal" id="close-auth-btn"><ion-icon name="close"></ion-icon></span>
+                <h2 id="auth-title">Giriş Yap</h2>
+                <form id="auth-form" autocomplete="off">
+                    <input type="text" id="auth-username" placeholder="Kullanıcı Adı" required autocomplete="off">
+                    <input type="password" id="auth-password" placeholder="Şifre" required autocomplete="off">
+                    <button type="submit" id="auth-submit-btn">Giriş Yap</button>
+                    <p id="auth-error-msg" style="color: #ef4444; font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
+                </form>
+                <div class="auth-toggle">
+                    <span id="auth-toggle-text">Hesabın yok mu? </span>
+                    <a href="#" id="auth-toggle-link">Kayıt Ol</a>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script src="script.js"></script>

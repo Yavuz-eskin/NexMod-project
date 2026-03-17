@@ -7,11 +7,18 @@ const Mod = require('./models/Mod');
 const crawlMods = require('./crawler');
 require('dotenv').config();
 
+// Gerekli JWT ve Şifreleme Modülleri
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
 
 // Front-end (HTML/JS) dosyamızın bu Node.js sunucusuna istek atabilmesi için CORS aktif edilir
 app.use(cors());
+// Gelen JSON verilerini okuyabilmek için
+app.use(express.json());
 
 // Ön yüz dosyalarını (HTML, CSS, JS vb.) sunucudan servis et (Cloud dağıtımı için gerekli)
 app.use(express.static(__dirname));
@@ -144,6 +151,110 @@ app.get('/api/games', async (req, res) => {
     } catch (error) {
         console.error("Nexus API'den oyunları çekerken hata oluştu:", error.message);
         res.status(500).json({ error: 'Sunucu tarafında oyunlar çekilirken bir hata oluştu.' });
+    }
+});
+
+// --- KULLANICI GİRİŞ / KAYIT SİSTEMİ EKLENTİSİ ---
+const User = require('./models/User');
+
+// Kayıt Ol Endpointi
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password || username.length < 3 || password.length < 5) {
+            return res.status(400).json({ error: 'Kullanıcı adı en az 3, şifre en az 5 karakter olmalıdır.' });
+        }
+
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Bu kullanıcı adı zaten alınmış.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ username, password: hashedPassword, favorites: [] });
+        await newUser.save();
+
+        const token = jwt.sign({ id: newUser._id, username: newUser.username }, JWT_SECRET, { expiresIn: '30d' });
+        res.status(201).json({ token, username: newUser.username, favorites: newUser.favorites });
+    } catch (err) {
+        res.status(500).json({ error: 'Kayıt olurken bir hata oluştu.' });
+    }
+});
+
+// Giriş Yap Endpointi
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(400).json({ error: 'Kullanıcı bulunamadı.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Hatalı şifre.' });
+        }
+
+        const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+        res.json({ token, username: user.username, favorites: user.favorites });
+    } catch (err) {
+        res.status(500).json({ error: 'Giriş yapılırken sunucu hatası.' });
+    }
+});
+
+// Token Doğrulama Middleware'i
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+    if (!token) return res.status(401).json({ error: 'Yetkisiz erişim.' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Geçersiz veya süresi dolmuş token.' });
+        req.user = user;
+        next();
+    });
+};
+
+// Favorileri Çekme
+app.get('/api/user/favorites', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+        res.json({ favorites: user.favorites });
+    } catch (error) {
+        res.status(500).json({ error: 'Favoriler alınamadı.' });
+    }
+});
+
+// Favoriye Ekle / Çıkar
+app.post('/api/user/favorites', authenticateToken, async (req, res) => {
+    try {
+        const { modData } = req.body;
+        if (!modData || !modData.mod_id) return res.status(400).json({ error: 'Geçersiz mod verisi.' });
+
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+
+        // Önce favorilerde var mı kontrol et
+        const existingIndex = user.favorites.findIndex(f => f.mod_id === modData.mod_id);
+        
+        if (existingIndex >= 0) {
+            // Varsa Çıkart
+            user.favorites.splice(existingIndex, 1);
+        } else {
+            // Yoksa Ekle
+            user.favorites.push(modData);
+        }
+        
+        // MongoDB'ye kaydet 
+        // (Şema Mixed türü güncellemeleri algılamakta zorlanabilir, markModified diyelim)
+        user.markModified('favorites');
+        await user.save();
+
+        res.json({ message: 'Favoriler güncellendi', favorites: user.favorites });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Favori kaydetme hatası.' });
     }
 });
 

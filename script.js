@@ -12,11 +12,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const navTop = document.getElementById("nav-top");
     const navFavorites = document.getElementById("nav-favorites");
 
+    // Auth Elementleri
+    const userProfileBtn = document.getElementById("user-profile-btn");
+    const userNameDisplay = document.getElementById("user-name-display");
+    const authModal = document.getElementById("auth-modal");
+    const closeAuthBtn = document.getElementById("close-auth-btn");
+    const authForm = document.getElementById("auth-form");
+    const authTitle = document.getElementById("auth-title");
+    const authSubmitBtn = document.getElementById("auth-submit-btn");
+    const authToggleLink = document.getElementById("auth-toggle-link");
+    const authToggleText = document.getElementById("auth-toggle-text");
+    const authErrorMsg = document.getElementById("auth-error-msg");
+
     let allGamesList = [];
     let currentModsData = [];
     let currentModIndex = 0;
     let currentGameDomain = "all";
-    let favoritesArray = JSON.parse(localStorage.getItem('nexmod_favorites')) || [];
+    
+    // Auth State
+    let currentUser = JSON.parse(localStorage.getItem('nexmod_user')) || null;
+    let favoritesArray = currentUser ? currentUser.favorites : [];
+    let isRegisterMode = false;
 
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener("click", () => {
@@ -119,8 +135,104 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
-    // Uygulama yüklendiğinde ilk verileri çek
+    // Uygulama yüklendiğinde ilk verileri çek ve kullanıcıyı kontrol et
+    updateUserUI();
     loadInitialData();
+
+    // --- KULLANICI / AUTH MANTIĞI ---
+
+    function updateUserUI() {
+        if (currentUser && userNameDisplay) {
+            userNameDisplay.innerText = currentUser.username;
+            userNameDisplay.style.display = "block";
+            const userImg = document.querySelector("#user-profile-btn img");
+            if(userImg) userImg.src = `https://api.dicebear.com/6.x/avataaars/svg?seed=${currentUser.username}`;
+        } else if (userNameDisplay) {
+            userNameDisplay.innerText = "Giriş Yap";
+            userNameDisplay.style.display = "block";
+        }
+    }
+
+    if (userProfileBtn) {
+        userProfileBtn.addEventListener("click", () => {
+            if (!currentUser) {
+                openAuthModal();
+            } else {
+                // Çıkış Yapma opsiyonu (Basitçe logout)
+                if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+                    logout();
+                }
+            }
+        });
+    }
+
+    function openAuthModal() {
+        if(authModal) authModal.style.display = "flex";
+        if(authErrorMsg) authErrorMsg.style.display = "none";
+    }
+
+    if (closeAuthBtn) {
+        closeAuthBtn.addEventListener("click", () => {
+            if(authModal) authModal.style.display = "none";
+        });
+    }
+
+    if (authToggleLink) {
+        authToggleLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            isRegisterMode = !isRegisterMode;
+            authTitle.innerText = isRegisterMode ? "Kayıt Ol" : "Giriş Yap";
+            authSubmitBtn.innerText = isRegisterMode ? "Kayıt Ol" : "Giriş Yap";
+            authToggleText.innerText = isRegisterMode ? "Zaten hesabın var mı? " : "Hesabın yok mu? ";
+            authToggleLink.innerText = isRegisterMode ? "Giriş Yap" : "Kayıt Ol";
+            if(authErrorMsg) authErrorMsg.style.display = "none";
+        });
+    }
+
+    if (authForm) {
+        authForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("auth-username").value;
+            const password = document.getElementById("auth-password").value;
+            
+            const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+            
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    currentUser = data;
+                    favoritesArray = data.favorites || [];
+                    localStorage.setItem('nexmod_user', JSON.stringify(data));
+                    updateUserUI();
+                    if(authModal) authModal.style.display = "none";
+                    alert(isRegisterMode ? "Başarıyla kayıt olundu!" : "Giriş başarılı!");
+                    // Sayfayı yenilemeye gerek yok, state güncel
+                } else {
+                    if(authErrorMsg) {
+                        authErrorMsg.innerText = data.error || "Bir hata oluştu.";
+                        authErrorMsg.style.display = "block";
+                    }
+                }
+            } catch (err) {
+                console.error("Auth hatası:", err);
+            }
+        });
+    }
+
+    function logout() {
+        currentUser = null;
+        favoritesArray = [];
+        localStorage.removeItem('nexmod_user');
+        updateUserUI();
+        navDiscover.click(); // Keşfet'e dön
+    }
 
     // -- Menü Yönlendirmeleri (Keşfet / Çok Sevilenler) --
     if (navTop) {
@@ -157,8 +269,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (navFavorites) {
-        navFavorites.addEventListener("click", (e) => {
+        navFavorites.addEventListener("click", async (e) => {
             e.preventDefault();
+            
+            if (!currentUser) {
+                alert("Favorilerinizi görmek için lütfen giriş yapın.");
+                openAuthModal();
+                return;
+            }
+
             if(navDiscover) navDiscover.classList.remove("active");
             if(navTop) navTop.classList.remove("active");
             navFavorites.classList.add("active");
@@ -169,8 +288,21 @@ document.addEventListener("DOMContentLoaded", () => {
             if(sectionHeaderP) sectionHeaderP.innerHTML = 'Beğendiğin ve kalbine dokunan tüm modlar burada güvenle saklanıyor.';
             if(inputField) inputField.value = '';
             
+            // Sunucudan favorileri en güncel haliyle çek
+            try {
+                const res = await fetch('/api/user/favorites', {
+                    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    favoritesArray = data.favorites;
+                    // Hafızadaki kullanıcıyı da güncelle
+                    currentUser.favorites = favoritesArray;
+                    localStorage.setItem('nexmod_user', JSON.stringify(currentUser));
+                }
+            } catch (err) { console.error("Favori senkronizasyon hatası:", err); }
+
             container.innerHTML = ''; 
-            // Favoriler Local Storage'dan zaten her tıklamada en güncel haliyle çekilir 
             currentModsData = favoritesArray;
             currentModIndex = 0;
             
@@ -283,39 +415,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Favori - Kalp butonlarına Tıklama Mantığı (Event Delegation - Live Dom Manipulation)
     if (container) {
-        container.addEventListener("click", (e) => {
+        container.addEventListener("click", async (e) => {
             const btn = e.target.closest(".favorite-btn");
             if (!btn) return; // Kalbe tıklanmadıysa çık
             
             e.preventDefault();
             e.stopPropagation();
 
-            const modData = JSON.parse(decodeURIComponent(btn.getAttribute("data-mod")));
-            const existingIndex = favoritesArray.findIndex(f => f.mod_id === modData.mod_id);
+            if (!currentUser) {
+                alert("Modları favoriye eklemek için lütfen giriş yapın.");
+                openAuthModal();
+                return;
+            }
 
+            const modData = JSON.parse(decodeURIComponent(btn.getAttribute("data-mod")));
+            
+            // UI'ı anında güncelle (Optimistic UI)
+            const existingIndex = favoritesArray.findIndex(f => f.mod_id === modData.mod_id);
             if (existingIndex >= 0) {
-                // Mod zaten favorilerde, kalp KIRILDI (Çıkart)
                 favoritesArray.splice(existingIndex, 1);
                 btn.classList.remove("active");
-                
-                // Eğer bizzat "Favorilerim" sayfasındayken çıkarttıysa UI'ı anında gizle (Animasyonlu ve Temiz)
                 if (navFavorites && navFavorites.classList.contains("active")) {
                     const card = btn.closest(".mod-card");
                     if (card) card.style.display = "none";
-                    
-                    if (favoritesArray.length === 0) {
-                        container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Henüz hiç favori modun yok. Sağ üstteki kalp butonlarına tıklayarak mod kaydetmeye başla!</p>`;
-                        if(loadMoreBtn) loadMoreBtn.style.display = "none";
-                    }
                 }
             } else {
-                // Mod favorilerde yok, Kalp eklendi!
                 favoritesArray.push(modData);
                 btn.classList.add("active");
             }
-            
-            // Değişikliği anında tarayıcı hafızasına (Local Storage) kaydet
-            localStorage.setItem("nexmod_favorites", JSON.stringify(favoritesArray));
+
+            // SUNUCUYA KAYDET (Account Sync)
+            try {
+                const res = await fetch('/api/user/favorites', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ modData })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    // Sunucudan gelen kesinleşmiş listeyi alalım
+                    favoritesArray = data.favorites;
+                    currentUser.favorites = favoritesArray;
+                    localStorage.setItem('nexmod_user', JSON.stringify(currentUser));
+                }
+            } catch (err) {
+                console.error("Favori sync hatası:", err);
+            }
+
+            if (navFavorites && navFavorites.classList.contains("active") && favoritesArray.length === 0) {
+                container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Henüz hiç favori modun yok. Sağ üstteki kalp butonlarına tıklayarak mod kaydetmeye başla!</p>`;
+                if(loadMoreBtn) loadMoreBtn.style.display = "none";
+            }
         });
     }
 

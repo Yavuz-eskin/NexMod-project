@@ -711,3 +711,101 @@ body {
     .search-box button { width: 100%; padding: 1.2rem; }
     .ai-icon { margin-right: 0; margin-bottom: 0.5rem; font-size: 2rem; }
 }
+
+/* Auth Modal Styles */
+.auth-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(13, 15, 26, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-modal-content {
+    background: rgba(20, 23, 38, 0.95);
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 15px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    position: relative;
+    text-align: center;
+}
+
+.close-auth-modal {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.close-auth-modal:hover {
+    color: var(--text-main);
+}
+
+.auth-modal-content h2 {
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+}
+
+.auth-modal-content input {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(13, 15, 26, 0.8);
+    color: white;
+    font-size: 1rem;
+    font-family: var(--font);
+    box-sizing: border-box;
+}
+
+.auth-modal-content input:focus {
+    outline: none;
+    border-color: var(--primary-glow);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+.auth-modal-content button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 0.5rem;
+}
+
+.auth-modal-content button:hover {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.5);
+}
+
+.auth-toggle {
+    margin-top: 1.2rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.auth-toggle a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-toggle a:hover {
+    text-decoration: underline;
+}
