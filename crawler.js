@@ -59,6 +59,11 @@ async function crawlMods() {
                 
                 if (res.data && Array.isArray(res.data)) {
                     res.data.forEach(mod => {
+                        // Eğer mod ismi yoksa (İsimsiz Mod durumları) veritabanına alma
+                        if (!mod.name || mod.name.trim() === '') {
+                            return; // Bu modu pas geç
+                        }
+
                         // Aynı id'ye sahip olanları (Örn: Hem yeni hem trend olabilir) bir kere kaydet
                         const uniqueIdentifier = `${game}_${mod.mod_id}`;
                         if (!seenIds.has(uniqueIdentifier)) {
