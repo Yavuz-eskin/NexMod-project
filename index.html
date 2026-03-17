@@ -23,6 +23,13 @@
             Nex<span>Mod</span>
         </div>
         <ul class="nav-links">
+            <li class="game-selector-wrapper">
+                <input type="text" id="game-search-input" class="game-dropdown nav-dropdown" placeholder="Oyunlar Yükleniyor..." autocomplete="off">
+                <input type="hidden" id="game-select-value" value="skyrimspecialedition">
+                <ul id="game-list-dropdown" class="custom-options-list">
+                    <!-- Dinamik Yüklenecek -->
+                </ul>
+            </li>
             <li><a href="#" class="active">Keşfet</a></li>
             <li><a href="#">Benim Modlarım</a></li>
             <li><a href="#">Topluluk</a></li>
@@ -41,7 +48,7 @@
             <div class="search-container">
                 <div class="search-box">
                     <ion-icon name="sparkles-outline" class="ai-icon"></ion-icon>
-                    <input type="text" id="ai-search-input" placeholder="Örn: Skyrim'de FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar...">
+                    <input type="text" id="ai-search-input" placeholder="Örn: FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar...">
                     <button id="search-btn">Akıllı Ara</button>
                 </div>
                 <div class="search-suggestions">
@@ -60,70 +67,13 @@
             </div>
 
             <div class="mod-grid" id="mod-container">
-                <!-- Mod Card 1 -->
-                <div class="mod-card">
-                    <div class="mod-image">
-                        <img src="./assets/futuristic.png" alt="Cyberpunk Ultra HD">
-                        <div class="ai-match-badge">98% Eşleşme</div>
-                    </div>
-                    <div class="mod-info">
-                        <h3>Cyberpunk Ultra HD Revamp</h3>
-                        <p>Tüm dokuları 4K seviyesine çıkarırken performansı koruyan yapay zeka destekli grafik pakedi.</p>
-                        <!-- Auto-Tags -->
-                        <div class="auto-tags">
-                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="flash-outline"></ion-icon> Performans (AI Etiketi)</span>
-                            <span class="tag">Grafik</span>
-                            <span class="tag">Çevre</span>
-                        </div>
-                        <div class="mod-footer">
-                            <span class="author">by NeoCoder</span>
-                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mod Card 2 -->
-                <div class="mod-card">
-                    <div class="mod-image">
-                        <img src="./assets/fantasy.png" alt="Magic Swords Expansion">
-                        <div class="ai-match-badge">92% Eşleşme</div>
-                    </div>
-                    <div class="mod-info">
-                        <h3>Efsanevi Kılıçlar Genişlemesi</h3>
-                        <p>Oyuna 50'den fazla özel animasyonlu yeni büyü kılıcı ekler. AI animasyon motoru ile uyumlu.</p>
-                        <!-- Auto-Tags -->
-                        <div class="auto-tags">
-                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="color-wand-outline"></ion-icon> Silah/Zırh (AI Etiketi)</span>
-                            <span class="tag">Fantastik</span>
-                        </div>
-                        <div class="mod-footer">
-                            <span class="author">by DragonSlayer</span>
-                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mod Card 3 -->
-                <div class="mod-card">
-                    <div class="mod-image">
-                        <img src="./assets/scifi.png" alt="Clean HUD Pro">
-                        <div class="ai-match-badge">85% Eşleşme</div>
-                    </div>
-                    <div class="mod-info">
-                        <h3>Clean HUD Pro V2</h3>
-                        <p>Arayüzü tamamen özelleştirebileceğiniz, holografik detaylara sahip minimal tasarım.</p>
-                        <!-- Auto-Tags -->
-                        <div class="auto-tags">
-                            <span class="tag ai-tag" title="AI tarafından otomatik eklendi"><ion-icon name="desktop-outline"></ion-icon> Arayüz (AI Etiketi)</span>
-                            <span class="tag">Modern</span>
-                            <span class="tag">Sci-Fi</span>
-                        </div>
-                        <div class="mod-footer">
-                            <span class="author">by UI_Master</span>
-                            <button class="download-btn"><ion-icon name="cloud-download-outline"></ion-icon></button>
-                        </div>
-                    </div>
-                </div>
+                <!-- Modlar JavaScript üzerinden Nexus Mods API'sinden dinamik olarak yüklenecek -->
+            </div>
+            
+            <div class="load-more-container" style="text-align: center; margin-top: 3rem;">
+                <button id="load-more-btn" class="load-more-btn" style="display: none;">
+                    Daha Fazla Mod Yükle <ion-icon name="chevron-down-outline"></ion-icon>
+                </button>
             </div>
         </section>
 

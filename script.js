@@ -4,6 +4,168 @@ document.addEventListener("DOMContentLoaded", () => {
     const suggestions = document.querySelectorAll(".suggestion");
     const overlay = document.getElementById("loading-overlay");
     const container = document.getElementById("mod-container");
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    const gameSearchInput = document.getElementById("game-search-input");
+    const gameSelectValue = document.getElementById("game-select-value");
+    const gameListDropdown = document.getElementById("game-list-dropdown");
+
+    let allGamesList = [];
+    let currentModsData = [];
+    let currentModIndex = 0;
+    let currentGameDomain = "skyrimspecialedition";
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener("click", () => {
+            renderMoreMods();
+        });
+    }
+
+    // Oyunları dinamik yükle ve ardından API'den ilk tavsiyeleri çek
+    async function loadInitialData() {
+        if (!gameSearchInput) return;
+        
+        try {
+            const res = await fetch('http://localhost:3000/api/games');
+            if (res.ok) {
+                const games = await res.json();
+                
+                // Oyunları popülerliğe (indirme sayısına) göre sıralayalım
+                if (Array.isArray(games)) {
+                    games.sort((a,b) => (b.downloads || 0) - (a.downloads || 0));
+                    allGamesList = games;
+                    
+                    gameSearchInput.value = "Skyrim Special Edition"; // Default
+                    gameSearchInput.placeholder = "Oyun adı yazın...";
+                    if(gameSelectValue) gameSelectValue.value = "skyrimspecialedition";
+                    
+                    renderGameOptions(allGamesList);
+                }
+            }
+        } catch(e) {
+            console.error("Oyunlar yüklenirken bir hata oluştu:", e);
+            gameSearchInput.placeholder = "Oyunlar yüklenemedi";
+            gameSearchInput.value = "Skyrim SE";
+        }
+
+        // Açılışta 12 tane yapay zekanın "rastgele seçtiği/önerdiği" güncel ve popüler modları sayfaya getir
+        triggerAISearch(true);
+    }
+
+    function renderGameOptions(gamesToRender) {
+        if(!gameListDropdown) return;
+        gameListDropdown.innerHTML = '';
+        
+        if (gamesToRender.length === 0) {
+            const li = document.createElement("li");
+            li.textContent = "Oyun bulunamadı...";
+            li.style.pointerEvents = "none";
+            gameListDropdown.appendChild(li);
+            return;
+        }
+
+        gamesToRender.forEach(g => {
+            const li = document.createElement("li");
+            li.textContent = `${g.name} (${g.downloads ? (g.downloads/1000000).toFixed(1) + 'M' : '0'})`;
+            li.dataset.domain = g.domain_name;
+            
+            li.addEventListener("click", () => {
+                if(gameSelectValue) gameSelectValue.value = g.domain_name;
+                gameSearchInput.value = g.name;
+                gameListDropdown.classList.remove("show");
+                
+                // Oyunu değiştirince otomatik olarak modlarını çek
+                triggerAISearch(true);
+            });
+            
+            gameListDropdown.appendChild(li);
+        });
+    }
+
+    // Searchable Dropdown Event Listeners
+    if (gameSearchInput) {
+        let originalValue = "";
+
+        gameSearchInput.addEventListener("focus", () => {
+            originalValue = gameSearchInput.value;
+            gameSearchInput.value = "";
+            renderGameOptions(allGamesList);
+            gameListDropdown.classList.add("show");
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".game-selector-wrapper")) {
+                if(gameListDropdown) gameListDropdown.classList.remove("show");
+                
+                if(gameSearchInput.value.trim() === "" && allGamesList.length > 0) {
+                    gameSearchInput.value = originalValue || "Skyrim Special Edition";
+                }
+            }
+        });
+
+        gameSearchInput.addEventListener("input", (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = allGamesList.filter(g => g.name.toLowerCase().includes(val));
+            renderGameOptions(filtered);
+            gameListDropdown.classList.add("show");
+        });
+    }
+    
+    // Uygulama yüklendiğinde ilk verileri çek
+    loadInitialData();
+
+    function renderMoreMods() {
+        if (!currentModsData || currentModsData.length === 0) return;
+        
+        const nextBatch = currentModsData.slice(currentModIndex, currentModIndex + 12);
+        
+        nextBatch.forEach(mod => {
+            const title = mod.name || mod.title || 'İsimsiz Mod';
+            const description = mod.summary || mod.description || 'Bu mod hakkında bir açıklama sunulmamış.';
+            const author = mod.author || 'Nexus Geliştiricisi';
+            const iconUrl = mod.picture_url || 'https://api.dicebear.com/6.x/shapes/svg?seed=' + title; 
+            const categoryName = mod.category_name || currentGameDomain + ' Modu';
+            const projectUrl = `https://www.nexusmods.com/${currentGameDomain}/mods/${mod.mod_id}`;
+            const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
+
+            const cardHtml = `
+                <div class="mod-card">
+                    <div class="mod-image" style="background-color: #1a1c29;">
+                        <img src="${iconUrl}" alt="${title}" style="object-fit: cover; ">
+                        <div class="ai-match-badge">%${matchPercent} AI Eşleşmesi</div>
+                    </div>
+                    <div class="mod-info">
+                        <h3>${title}</h3>
+                        <p>${description.slice(0, 100)}...</p>
+                        
+                        <div class="auto-tags">
+                            <span class="tag ai-tag" title="Nexus Mods Node.js Backend API verisi">
+                                <ion-icon name="flash-outline"></ion-icon> Nexus API
+                            </span>
+                            <span class="tag">${categoryName}</span>
+                        </div>
+                        
+                        <div class="mod-footer">
+                            <span class="author">by ${author}</span>
+                            <a href="${projectUrl}" target="_blank" class="download-btn" style="text-decoration: none;" title="NexusMods'da Aç">
+                                <ion-icon name="open-outline"></ion-icon>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHtml;
+        });
+
+        currentModIndex += 12;
+
+        if (loadMoreBtn) {
+            if (currentModIndex >= currentModsData.length) {
+                loadMoreBtn.style.display = "none";
+            } else {
+                loadMoreBtn.style.display = "inline-flex";
+            }
+        }
+    }
 
     // Click suggestions to quickly fill input
     suggestions.forEach(sug => {
@@ -15,28 +177,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Enter key support for input
     inputField.addEventListener("keypress", (e) => {
-        if(e.key === 'Enter' && inputField.value.trim() !== '') {
+        if(e.key === 'Enter') {
             triggerAISearch();
         }
     });
 
     // Button click support
     searchBtn.addEventListener("click", () => {
-        if(inputField.value.trim() !== '') {
-            triggerAISearch();
-        } else {
-            inputField.focus();
-        }
+        triggerAISearch();
     });
 
-    function triggerAISearch() {
-        const query = inputField.value.trim();
-        if(!query) return;
+    function triggerAISearch(isInitial = false) {
+        let query = "";
+        if (inputField) query = inputField.value.trim();
+        
+        if(!query && !isInitial) {
+            if (inputField) inputField.focus();
+            return;
+        }
 
         // Yükleme ekranını göster
-        overlay.classList.add("active");
+        if (overlay) overlay.classList.add("active");
 
-    // Gerçek API'ye istek atmadan önce biraz AI "düşünme" efekti verelim
+        // Gerçek API'ye istek atmadan önce biraz AI "düşünme" efekti verelim
         setTimeout(() => {
             searchNexusMods(query);
         }, 1200); 
@@ -50,8 +213,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         try {
             // Kendi yazdığımız Node.js arka plan (Backend) sunucumuza özel proxy isteği.
-            // Bu sunucu, arkaplanda Nexus Mods API sine bağlanarak "apiKey" gizliliğinizi korur!
-            const apiUrl = `http://localhost:3000/api/search?q=${encodeURIComponent(query)}&game=skyrimspecialedition`;
+            currentGameDomain = gameSelectValue ? gameSelectValue.value : "skyrimspecialedition";
+            const apiUrl = `http://localhost:3000/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
             
             const response = await fetch(apiUrl);
             
@@ -64,54 +227,15 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 container.innerHTML = ''; // Eski elemanları temizle
                 
-                // Gelen Nexus API formatının data.mods ya da data.hits şeklinde bir liste olmasını varsayıyoruz
-                // Nexus Mods API si endpoint türüne göre bazen diziyi farklı isimlendirebilir
                 const modsArray = data.mods || data.hits || data || []; 
+                currentModsData = modsArray;
+                currentModIndex = 0;
 
                 if (Array.isArray(modsArray) && modsArray.length > 0) {
-                    modsArray.slice(0, 6).forEach(mod => {
-                        // Nexus Mods'dan dönen verileri okuma (Standart obje simülasyonu / karşılığı olarak)
-                        const title = mod.name || mod.title || 'İsimsiz Mod';
-                        const description = mod.summary || mod.description || 'Bu mod hakkında bir açıklama sunulmamış.';
-                        const author = mod.author || 'Nexus Geliştiricisi';
-                        const iconUrl = mod.picture_url || 'https://api.dicebear.com/6.x/shapes/svg?seed=' + title; 
-                        
-                        // Etiketlendirme veya kategorizasyon
-                        const categoryName = mod.category_name || 'Skyrim Modu';
-                        const projectUrl = `https://www.nexusmods.com/skyrimspecialedition/mods/${mod.mod_id}`;
-                        
-                        const matchPercent = Math.floor(Math.random() * (99 - 75 + 1) + 75);
-
-                        const cardHtml = `
-                            <div class="mod-card">
-                                <div class="mod-image" style="background-color: #1a1c29;">
-                                    <img src="${iconUrl}" alt="${title}" style="object-fit: cover; ">
-                                    <div class="ai-match-badge">%${matchPercent} AI Eşleşmesi</div>
-                                </div>
-                                <div class="mod-info">
-                                    <h3>${title}</h3>
-                                    <p>${description.slice(0, 100)}...</p>
-                                    
-                                    <div class="auto-tags">
-                                        <span class="tag ai-tag" title="Nexus Mods Node.js Backend API verisi">
-                                            <ion-icon name="flash-outline"></ion-icon> Nexus API
-                                        </span>
-                                        <span class="tag">${categoryName}</span>
-                                    </div>
-                                    
-                                    <div class="mod-footer">
-                                        <span class="author">by ${author}</span>
-                                        <a href="${projectUrl}" target="_blank" class="download-btn" style="text-decoration: none;" title="NexusMods'da Aç">
-                                            <ion-icon name="open-outline"></ion-icon>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        container.innerHTML += cardHtml;
-                    });
+                    renderMoreMods();
                 } else {
                     container.innerHTML = `<p style="color: #94a3b8; text-align: center; width: 100%; font-size: 1.2rem; margin-top: 2rem;">Yapay Zeka bu oyunda herhangi bir Nexus Modu bulamadı.</p>`;
+                    if(loadMoreBtn) loadMoreBtn.style.display = "none";
                 }
                 
                 // Yeni içeriği göster

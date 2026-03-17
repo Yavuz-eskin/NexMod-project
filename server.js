@@ -14,8 +14,8 @@ app.get('/api/search', async (req, res) => {
     const query = req.query.q;
     const gameDomain = req.query.game || 'skyrimspecialedition'; // Varsayılan oyun: Skyrim SE
 
-    if (!query) {
-        return res.status(400).json({ error: 'Lütfen aranacak bir kelime girin (query gerekli)' });
+    if (query !== '' && query.length < 2) {
+        // En azından 2 karakter olabilir ya da boş olabilir
     }
 
     // NexusMods apiKey .env dosyasında bulunur
@@ -26,22 +26,51 @@ app.get('/api/search', async (req, res) => {
 
     try {
         /*
-          NOT: Nexus Mods V1 API'sinde doğrudan kelime ile arama (string search) endpoint'i her zaman tam açık değildir.
-          Burada bir "proxy" örneği olarak, eğer böyle bir arama yapıldığını varsayarsak veya yapıyı nasıl kurduğunu göstermek için yazılmıştır.
-          Eğer API v1 'search' parametresini destekliyorsa (veya GraphQL v2 altyapısını kullanırsan) burayı güvende çalıştırabilirsin.
+          NOT: Nexus Mods V1 REST API'sinde doğrudan kelime ile mod arama yeteneği (search keyword) bulunmuyor.
+          Bu nedenle "Trending" (Popüler) ve "Latest" (En Yeni) modları çekip Node.js tarafında kendimiz filtreliyoruz
+          (Yapay Zeka arama deneyimi sunabilmek için).
         */
-        const response = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods`, {
-            params: {
-                search: query // Kelime arama
-            },
-            headers: {
-                'accept': 'application/json',
-                'apikey': apiKey // Sizin özel API anahtarınız sunucu tarafında koruma altında!
-            }
+        
+        const trendingRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/trending.json`, {
+            headers: { 'accept': 'application/json', 'apikey': apiKey }
+        });
+        
+        const latestRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_added.json`, {
+            headers: { 'accept': 'application/json', 'apikey': apiKey }
+        });
+        
+        const updatedRes = await axios.get(`https://api.nexusmods.com/v1/games/${gameDomain}/mods/latest_updated.json`, {
+            headers: { 'accept': 'application/json', 'apikey': apiKey }
         });
 
-        // NexusMods'dan gelen cevabı tekrar kendi sitemize (frontend) döndürürüz
-        res.json(response.data);
+        // Üç listeyi birleştir
+        let allMods = [...trendingRes.data, ...latestRes.data, ...updatedRes.data];
+        
+        // Tekrarlanan modları filtrele (aynı mod hem yeni, güncellenmiş hem trend olabilir)
+        const uniqueMods = [];
+        const seenIds = new Set();
+        for (const mod of allMods) {
+            if(!seenIds.has(mod.mod_id)) {
+                seenIds.add(mod.mod_id);
+                uniqueMods.push(mod);
+            }
+        }
+
+        // Kullanıcının aramasına (query) göre arkaplanda küçük bir yapay zeka/filtre simülasyonu:
+        const lowerQuery = query.toLowerCase();
+        let filteredMods = uniqueMods.filter(mod => 
+            (mod.name && mod.name.toLowerCase().includes(lowerQuery)) || 
+            (mod.summary && mod.summary.toLowerCase().includes(lowerQuery)) ||
+            (mod.description && mod.description.toLowerCase().includes(lowerQuery))
+        );
+        
+        // Eğer aranan kelime hiç veriyle eşleşmediyse, boş dönmesin diye en azından 10-12 popüler mod önerelim
+        // (Sonuçta yapay zekamız 'benzer' şeyler de önermeli!)
+        if (filteredMods.length === 0) {
+            filteredMods = uniqueMods; 
+        }
+
+        res.json({ mods: filteredMods });
 
     } catch (error) {
         console.error("Nexus API'den veri çekerken hata oluştu:");
@@ -53,6 +82,28 @@ app.get('/api/search', async (req, res) => {
         } else {
              res.status(500).json({ error: 'Sunucu tarafında modlar çekilirken bir hata oluştu.' });
         }
+    }
+});
+
+// Tüm oyunları çekmek için yeni endpoint
+app.get('/api/games', async (req, res) => {
+    const apiKey = process.env.NEXUS_API_KEY;
+    if (!apiKey) {
+        return res.status(500).json({ error: 'NexusMods API anahtarı .env dosyasında bulunamadı.' });
+    }
+
+    try {
+        const response = await axios.get('https://api.nexusmods.com/v1/games.json', {
+            headers: { 'accept': 'application/json', 'apikey': apiKey }
+        });
+
+        // İstersek tüm listeyi (binlerce oyun olabilir), ya da çok oynanan oyunları yollayabiliriz.
+        // Hepsini frontend'e yollayalım, frontend alfabetik sıralayabilir
+        res.json(response.data);
+
+    } catch (error) {
+        console.error("Nexus API'den oyunları çekerken hata oluştu:", error.message);
+        res.status(500).json({ error: 'Sunucu tarafında oyunlar çekilirken bir hata oluştu.' });
     }
 });
 
