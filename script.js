@@ -41,6 +41,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const fullSavePrefsBtn = document.getElementById("full-save-prefs-btn");
     const fullDeleteAccountBtn = document.getElementById("full-delete-account-btn");
 
+    // Custom Logout Modal Elementleri
+    const confirmModal = document.getElementById("confirm-modal");
+    const confirmLogoutBtn = document.getElementById("confirm-logout-btn");
+    const cancelLogoutBtn = document.getElementById("cancel-logout-btn");
+    const toastContainer = document.getElementById("toast-container");
+
     // Sidebar Elementleri
     const userSidebar = document.getElementById("user-sidebar");
     const sidebarOverlay = document.getElementById("sidebar-overlay");
@@ -330,18 +336,31 @@ document.addEventListener("DOMContentLoaded", () => {
     // Hesap Silme (Full Page)
     if (fullDeleteAccountBtn) {
         fullDeleteAccountBtn.addEventListener("click", async () => {
-            if (confirm("HESABINIZI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ?")) {
-                try {
-                    const res = await fetch('/api/user/delete-account', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${currentUser.token}` }
-                    });
-                    if (res.ok) {
-                        alert("Hesabınız silindi.");
-                        logout();
+            // Hesap silme ciddi bir işlem olduğu için burada şimdilik alert yerine bir "silme onayı" state'i kuracağız
+            if (fullDeleteAccountBtn.innerText !== "KESİN OLARAK SİL?") {
+                fullDeleteAccountBtn.innerText = "KESİN OLARAK SİL?";
+                fullDeleteAccountBtn.style.background = "#ef4444";
+                fullDeleteAccountBtn.style.color = "white";
+                setTimeout(() => {
+                    if(fullDeleteAccountBtn) {
+                        fullDeleteAccountBtn.innerText = "Hesabımı Kalıcı Olarak Sil";
+                        fullDeleteAccountBtn.style.background = "rgba(239, 68, 68, 0.1)";
+                        fullDeleteAccountBtn.style.color = "#ef4444";
                     }
-                } catch (err) { console.error(err); }
+                }, 3000);
+                return;
             }
+
+            try {
+                const res = await fetch('/api/user/delete-account', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                });
+                if (res.ok) {
+                    showToast("Hesabınız silindi. Sizi özleyeceğiz.", "error");
+                    logout();
+                }
+            } catch (err) { console.error(err); }
         });
     }
 
@@ -423,10 +442,28 @@ document.addEventListener("DOMContentLoaded", () => {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", (e) => {
             e.preventDefault();
-            if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
-                closeSidebar();
-                logout();
-            }
+            if(confirmModal) confirmModal.style.display = "flex";
+        });
+    }
+
+    if (confirmLogoutBtn) {
+        confirmLogoutBtn.addEventListener("click", () => {
+            if(confirmModal) confirmModal.style.display = "none";
+            closeSidebar();
+            logout();
+            showToast("Oturum kapatıldı.");
+        });
+    }
+
+    if (cancelLogoutBtn) {
+        cancelLogoutBtn.addEventListener("click", () => {
+            if(confirmModal) confirmModal.style.display = "none";
+        });
+    }
+
+    if (confirmModal) {
+        confirmModal.addEventListener("click", (e) => {
+            if(e.target === confirmModal) confirmModal.style.display = "none";
         });
     }
 
@@ -491,8 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.setItem('nexmod_user', JSON.stringify(data));
                     updateUserUI();
                     if(authModal) authModal.style.display = "none";
-                    alert(isRegisterMode ? "Başarıyla kayıt olundu!" : "Giriş başarılı!");
-                    // Sayfayı yenilemeye gerek yok, state güncel
+                    showToast(isRegisterMode ? "Hesabınız başarıyla oluşturuldu!" : `${data.username} olarak giriş yapıldı.`, "success");
                 } else {
                     if(authErrorMsg) {
                         authErrorMsg.innerText = data.error || "Bir hata oluştu.";
@@ -510,7 +546,37 @@ document.addEventListener("DOMContentLoaded", () => {
         favoritesArray = [];
         localStorage.removeItem('nexmod_user');
         updateUserUI();
+        if(accountPage) accountPage.style.display = "none";
         navDiscover.click(); // Keşfet'e dön
+    }
+
+    // Toast Mesaj Kutusu
+    function showToast(msg, type = "success") {
+        if(!toastContainer) return;
+        const toast = document.createElement("div");
+        toast.style.cssText = `
+            background: rgba(20, 23, 38, 0.9);
+            border: 1px solid ${type === "success" ? "#10b981" : "#ef4444"};
+            padding: 1rem 1.5rem;
+            color: white;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        `;
+        const icon = type === "success" ? "checkmark-circle" : "alert-circle";
+        toast.innerHTML = `<ion-icon name="${icon}" style="color: ${type === "success" ? "#10b981" : "#ef4444"}; font-size: 1.5rem;"></ion-icon> <span>${msg}</span>`;
+        
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            toast.style.transition = '0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 
     // -- Menü Yönlendirmeleri (Keşfet / Çok Sevilenler) --
