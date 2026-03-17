@@ -81,13 +81,13 @@ app.get('/api/search', async (req, res) => {
             filterCondition.$text = { $search: lowerQuery };
         }
         
-        // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 60'ı)
-        let filteredMods = await Mod.find(filterCondition).limit(60).lean();
+        // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
+        let filteredMods = await Mod.find(filterCondition).limit(1000).lean();
 
         // Eğer arama çok kısaysa (query yoksa), vitrin/popüler modları göster (eski fallback)
         if (lowerQuery.length < 2) {
             let fallbackFilter = gameDomain !== 'all' ? { $or: [{ domain_name: gameDomain }, { category_name: gameDomain }] } : {};
-            filteredMods = await Mod.find(fallbackFilter).limit(60).lean();
+            filteredMods = await Mod.find(fallbackFilter).limit(1000).lean();
         }
 
         // Sonuçları her seferinde aralarında hafif karıştırarak listele
@@ -118,8 +118,8 @@ app.get('/api/top-mods', async (req, res) => {
             };
         }
 
-        // İndirme sayısına göre tersten (En yüksekten en düşüğe) sıralayıp ilk 60'ı alır
-        let topMods = await Mod.find(filterCondition).sort({ mod_downloads: -1 }).limit(60).lean();
+        // İndirme sayısına göre tersten (En yüksekten en düşüğe) sıralayıp ilk 1000'i alır
+        let topMods = await Mod.find(filterCondition).sort({ mod_downloads: -1 }).limit(1000).lean();
 
         res.json({ mods: topMods });
 
