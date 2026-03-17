@@ -258,6 +258,47 @@ app.post('/api/user/favorites', authenticateToken, async (req, res) => {
     }
 });
 
+// Şifre Değiştirme
+app.post('/api/user/change-password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) return res.status(400).json({ error: 'Mevcut şifre hatalı.' });
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        await user.save();
+        res.json({ message: 'Şifre başarıyla güncellendi.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Şifre güncellenirken bir hata oluştu.' });
+    }
+});
+
+// Tercihleri Güncelleme
+app.post('/api/user/preferences', authenticateToken, async (req, res) => {
+    try {
+        const { preferences } = req.body;
+        const user = await User.findById(req.user.id);
+        user.preferences = { ...user.preferences, ...preferences };
+        user.markModified('preferences');
+        await user.save();
+        res.json({ message: 'Tercihler güncellendi.', preferences: user.preferences });
+    } catch (err) {
+        res.status(500).json({ error: 'Tercihler kaydedilemedi.' });
+    }
+});
+
+// Hesabı Silme
+app.post('/api/user/delete-account', authenticateToken, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.user.id);
+        res.json({ message: 'Hesap başarıyla silindi.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Hesap silinirken hata oluştu.' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`NexMod Arka Plan (Node.js) Sunucusu Çalışıyor! (Port: ${PORT})`);
     console.log(`Frontend'ten istek atmak için: http://localhost:${PORT}/api/search?q=arananKelime`);

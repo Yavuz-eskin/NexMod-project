@@ -16,6 +16,10 @@ const UserSchema = new mongoose.Schema({
     favorites: {
         type: [mongoose.Schema.Types.Mixed], // Mod objelerini direkt dizide tutacağız (NoSQL denormalization)
         default: []
+    },
+    preferences: {
+        type: mongoose.Schema.Types.Mixed,
+        default: { darkMode: true, language: 'tr' }
     }
 }, { timestamps: true });
 

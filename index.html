@@ -108,7 +108,7 @@
                 <p id="sidebar-user-status">Premium Üye</p>
             </div>
             <div class="sidebar-menu">
-                <a href="#" class="menu-item">
+                <a href="#" class="menu-item" id="sidebar-account-btn">
                     <ion-icon name="person-outline"></ion-icon>
                     <span>Hesap Ayarları</span>
                 </a>
@@ -116,7 +116,7 @@
                     <ion-icon name="heart-outline"></ion-icon>
                     <span>Favorilerim</span>
                 </a>
-                <a href="#" class="menu-item">
+                <a href="#" class="menu-item" id="sidebar-prefs-btn">
                     <ion-icon name="settings-outline"></ion-icon>
                     <span>Tercihler</span>
                 </a>
@@ -128,6 +128,48 @@
             </div>
         </div>
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+        <!-- Settings Modal (Account/Preferences) -->
+        <div id="settings-modal" class="auth-modal-overlay" style="display: none;">
+            <div class="auth-modal-content settings-modal-content">
+                <span class="close-auth-modal" id="close-settings-btn"><ion-icon name="close"></ion-icon></span>
+                
+                <!-- Account Settings Section -->
+                <div id="account-section" style="display: none;">
+                    <h2>Hesap Ayarları</h2>
+                    <form id="change-password-form">
+                        <input type="password" id="current-password" placeholder="Mevcut Şifre" required>
+                        <input type="password" id="new-password" placeholder="Yeni Şifre (En az 5 karakter)" required>
+                        <button type="submit">Şifreyi Güncelle</button>
+                    </form>
+                    <hr class="sidebar-divider">
+                    <button id="delete-account-btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; margin-top: 1rem;">
+                        Hesabımı Kalıcı Olarak Sil
+                    </button>
+                </div>
+
+                <!-- Preferences Section -->
+                <div id="prefs-section" style="display: none;">
+                    <h2>Site Tercihleri</h2>
+                    <div class="pref-item" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; text-align: left;">
+                        <span>Karanlık Mod (Zaten Aktif)</span>
+                        <div style="background: #7c3aed; width: 40px; height: 20px; border-radius: 20px; position: relative;">
+                            <div style="background: white; width: 16px; height: 16px; border-radius: 50%; position: absolute; right: 2px; top: 2px;"></div>
+                        </div>
+                    </div>
+                    <div class="pref-item" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; text-align: left;">
+                        <span>Dil / Language</span>
+                        <select id="pref-lang" style="background: #1a1c29; color: white; border: 1px solid #333; padding: 5px; border-radius: 5px;">
+                            <option value="tr">Türkçe</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <button id="save-prefs-btn">Tercihleri Kaydet</button>
+                </div>
+
+                <p id="settings-msg" style="margin-top: 1rem; font-size: 0.9rem; display: none;"></p>
+            </div>
+        </div>
 
     </main>
 

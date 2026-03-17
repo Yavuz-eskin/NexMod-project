@@ -31,7 +31,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarUserName = document.getElementById("sidebar-user-name");
     const sidebarUserImg = document.getElementById("sidebar-user-img");
     const sidebarFavLink = document.getElementById("sidebar-fav-link");
+    const sidebarAccountBtn = document.getElementById("sidebar-account-btn");
+    const sidebarPrefsBtn = document.getElementById("sidebar-prefs-btn");
     const logoutBtn = document.getElementById("logout-btn");
+
+    // Settings Modal Elementleri
+    const settingsModal = document.getElementById("settings-modal");
+    const closeSettingsBtn = document.getElementById("close-settings-btn");
+    const accountSection = document.getElementById("account-section");
+    const prefsSection = document.getElementById("prefs-section");
+    const settingsMsg = document.getElementById("settings-msg");
+    const changePasswordForm = document.getElementById("change-password-form");
+    const savePrefsBtn = document.getElementById("save-prefs-btn");
+    const deleteAccountBtn = document.getElementById("delete-account-btn");
 
     let allGamesList = [];
     let currentModsData = [];
@@ -202,6 +214,123 @@ document.addEventListener("DOMContentLoaded", () => {
             closeSidebar();
             if(navFavorites) navFavorites.click();
         });
+    }
+
+    if (sidebarAccountBtn) {
+        sidebarAccountBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            openSettingsModal('account');
+        });
+    }
+
+    if (sidebarPrefsBtn) {
+        sidebarPrefsBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            openSettingsModal('prefs');
+        });
+    }
+
+    function openSettingsModal(section) {
+        if (!settingsModal) return;
+        settingsModal.style.display = "flex";
+        if(settingsMsg) settingsMsg.style.display = "none";
+        
+        if (section === 'account') {
+            accountSection.style.display = "block";
+            prefsSection.style.display = "none";
+        } else {
+            accountSection.style.display = "none";
+            prefsSection.style.display = "block";
+        }
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener("click", () => {
+            if(settingsModal) settingsModal.style.display = "none";
+        });
+    }
+
+    // Şifre Değiştirme Formu
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById("current-password").value;
+            const newPassword = document.getElementById("new-password").value;
+
+            if (newPassword.length < 5) {
+                showSettingsMsg("Yeni şifre en az 5 karakter olmalıdır.", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showSettingsMsg("Şifreniz başarıyla güncellendi!", "success");
+                    changePasswordForm.reset();
+                } else {
+                    showSettingsMsg(data.error || "Şifre güncellenemedi.", "error");
+                }
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    // Tercihleri Kaydetme
+    if (savePrefsBtn) {
+        savePrefsBtn.addEventListener("click", async () => {
+            const language = document.getElementById("pref-lang").value;
+            const preferences = { language };
+
+            try {
+                const res = await fetch('/api/user/preferences', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({ preferences })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showSettingsMsg("Tercihler kaydedildi. (Sayfa yenilendiğinde aktif olur)", "success");
+                }
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    // Hesap Silme
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener("click", async () => {
+            if (confirm("HESABINIZI KALICI OLARAK SİLMEK İSTEDİĞİNİZE EMİN MİSİNİZ? Bu işlem geri alınamaz ve tüm favorileriniz silinir.")) {
+                try {
+                    const res = await fetch('/api/user/delete-account', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+                    });
+                    if (res.ok) {
+                        alert("Hesabınız silindi. Güle güle!");
+                        logout();
+                        if(settingsModal) settingsModal.style.display = "none";
+                    }
+                } catch (err) { console.error(err); }
+            }
+        });
+    }
+
+    function showSettingsMsg(msg, type) {
+        if (!settingsMsg) return;
+        settingsMsg.innerText = msg;
+        settingsMsg.style.color = type === "success" ? "#10b981" : "#ef4444";
+        settingsMsg.style.display = "block";
     }
 
     if (logoutBtn) {
