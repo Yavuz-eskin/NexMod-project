@@ -22,7 +22,15 @@ if (MONGO_URI) {
     mongoose.connect(MONGO_URI)
         .then(() => {
             console.log('MongoDB Atlas bağlantısı başarıyla kuruldu!');
-            console.log('Sunucu ayakta! Ancak Gece Botu (Crawler) artık Render Cron Job tarafından yönetiliyor.');
+            
+            // Ücretsiz barındırma ve UptimeRobot uyumluluğu için kendi İç-Saatimizi (Internal Cron) kullanıyoruz
+            cron.schedule('0 3 * * *', async () => {
+                console.log("⏰ Saat 03:00 Zamanlanmış Görev (Cron Job) Başlıyor...");
+                console.log("-> Otomatik NexusMods Crawler/Robot devreye girdi!");
+                await crawlMods();
+                console.log("✅ Gece 03:00 senkronizasyonu tamamlandı.");
+            });
+            console.log('Zamanlanmış Robot Aktif: Her gece 03:00\'te yeni modlar veritabanına ucretsiz sekilde eklenecek!');
         })
         .catch(err => console.error('MongoDB Atlas yapılandırma veya bağlanma hatası:', err));
 } else {
