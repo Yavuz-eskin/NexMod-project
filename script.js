@@ -58,6 +58,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarPrefsBtn = document.getElementById("sidebar-prefs-btn");
     const logoutBtn = document.getElementById("logout-btn");
 
+    // Port/Proxy Yardımcısı: Frontend farklı portta veya file:// protocolündeyse 3000'e zorla
+    const getApiBase = () => {
+        if (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')) {
+            return "http://localhost:3000";
+        }
+        return "";
+    };
+    const apiBase = getApiBase();
+
     let allGamesList = [];
     let currentModsData = [];
     let currentModIndex = 0;
@@ -79,8 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!gameSearchInput) return;
         
         try {
-            // Sunucu nerede çalışıyorsa (Localhost veya Render), relatif path sayesinde oraya istek atar
-            const res = await fetch('/api/games');
+            const res = await fetch(`${apiBase}/api/games`);
             if (res.ok) {
                 const games = await res.json();
                 
@@ -189,6 +197,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if(editAvatarPreview) editAvatarPreview.src = avatarUrl;
                 if(editAvatarSeed) editAvatarSeed.value = currentUser.avatarSeed || "";
                 if(editUsername) editUsername.value = currentUser.username;
+                
+                // Tercihleri yükle
+                if(currentUser.preferences) {
+                    const langSelect = document.getElementById("full-pref-lang");
+                    if(langSelect) langSelect.value = currentUser.preferences.language || "tr";
+                    
+                    const darkModeToggle = document.querySelector(".toggle-switch");
+                    if(darkModeToggle) {
+                        if(currentUser.preferences.darkMode === false) darkModeToggle.classList.remove("active");
+                        else darkModeToggle.classList.add("active");
+                    }
+                }
             }
         } else if (userNameDisplay) {
             userNameDisplay.innerText = "Giriş Yap";
@@ -253,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             try {
-                const res = await fetch('/api/user/update-profile', {
+                const res = await fetch(`${apiBase}/api/user/update-profile`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -290,13 +310,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            if (newPassword.length < 5) {
-                showAccountMsg("Yeni şifre en az 5 karakter olmalıdır.", "error");
+            if (newPassword.length < 6) {
+                showAccountMsg("Yeni şifre en az 6 karakter olmalıdır.", "error");
                 return;
             }
 
             try {
-                const res = await fetch('/api/user/change-password', {
+                const res = await fetch(`${apiBase}/api/user/change-password`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -315,20 +335,35 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Karanlık Mod Toggle Tıklama
+    const darkModeToggle = document.querySelector(".toggle-switch");
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener("click", () => {
+            darkModeToggle.classList.toggle("active");
+        });
+    }
+    
     // Tercihler (Full Page)
     if (fullSavePrefsBtn) {
         fullSavePrefsBtn.addEventListener("click", async () => {
             const language = document.getElementById("full-pref-lang").value;
+            const isDarkMode = darkModeToggle && darkModeToggle.classList.contains("active");
+            
             try {
-                const res = await fetch('/api/user/preferences', {
+                const res = await fetch(`${apiBase}/api/user/preferences`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${currentUser.token}`
                     },
-                    body: JSON.stringify({ preferences: { language } })
+                    body: JSON.stringify({ preferences: { language, darkMode: isDarkMode } })
                 });
-                if (res.ok) showAccountMsg("Tercihler kaydedildi!");
+                if (res.ok) {
+                    const data = await res.json();
+                    currentUser.preferences = data.preferences;
+                    localStorage.setItem('nexmod_user', JSON.stringify(currentUser));
+                    showAccountMsg("Tercihler kaydedildi!");
+                }
             } catch (err) { console.error(err); }
         });
     }
@@ -352,7 +387,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             try {
-                const res = await fetch('/api/user/delete-account', {
+                const res = await fetch(`${apiBase}/api/user/delete-account`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${currentUser.token}` }
                 });
@@ -514,7 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
             
             try {
-                const res = await fetch(endpoint, {
+                const res = await fetch(`${apiBase}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -636,7 +671,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Sunucudan favorileri en güncel haliyle çek
             try {
-                const res = await fetch('/api/user/favorites', {
+                const res = await fetch(`${apiBase}/api/user/favorites`, {
                     headers: { 'Authorization': `Bearer ${currentUser.token}` }
                 });
                 const data = await res.json();
@@ -792,7 +827,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // SUNUCUYA KAYDET (Account Sync)
             try {
-                const res = await fetch('/api/user/favorites', {
+                const res = await fetch(`${apiBase}/api/user/favorites`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -854,51 +889,43 @@ document.addEventListener("DOMContentLoaded", () => {
         // Yükleme ekranını göster
         if (overlay) overlay.classList.add("active");
 
-        // Gerçek API'ye istek atmadan önce kısa bir UI efekti
-        setTimeout(() => {
-            searchNexusMods(query);
-        }, 100); 
+        // Gerçek API'ye istek at
+        searchNexusMods(query);
     }
 
     async function searchNexusMods(query) {
-        // Eski içeriği yavaşça gizle
         container.style.transition = '0.5s ease';
         container.style.opacity = '0';
         container.style.transform = 'translateY(20px)';
         
         try {
-            // Kendi yazdığımız Node.js arka plan (Backend) sunucumuza özel proxy isteği.
             currentGameDomain = gameSelectValue ? gameSelectValue.value : "all";
-            const apiUrl = `/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
+            
+            const apiUrl = `${apiBase}/api/search?q=${encodeURIComponent(query)}&game=${currentGameDomain}`;
+            console.log("🌐 İstek Atılıyor:", apiUrl);
             
             const response = await fetch(apiUrl);
             
             if (!response.ok) {
-                throw new Error('Node.js Backend sunucusuna ulaşılamadı. (Sunucu kapalı olabilir)');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Sunucu Hatası (${response.status}): ${errorData.error || errorData.message || 'Bilinmeyen bir hata oluştu.'}`);
             }
             
             const data = await response.json();
-            
-            // Veriyi anında ekrana bas (eski yapay bekletme kaldırıldı)
-            container.innerHTML = ''; // Eski elemanları temizle
+            container.innerHTML = ''; 
             
             const modsArray = data.mods || []; 
             const activeQuery = (window.lastActiveQuery || "").toLowerCase();
             const aiQuery = (data.aiQuery || "").toLowerCase();
 
-            // Tüm dizinin AI eşleşme oranını önceden hesapla ve modlara göm
             modsArray.forEach(mod => {
                 const title = (mod.name || mod.title || '').toLowerCase();
                 const description = (mod.summary || mod.description || '').toLowerCase();
-                
                 let matchPercent = 0;
 
                 if (mod.score) {
-                    // MongoDB Text Score'u 75-99 arası bir yüzdeye normalize et
-                    // Genelde skorlar 0.5 ile 5.0 arası değişir
                     matchPercent = 75 + Math.min(Math.floor(mod.score * 4.5), 24);
                 } else {
-                    // Fallback (eğer skor yoksa veya manuel hesap gerekiyorsa)
                     if (activeQuery && (title.includes(activeQuery) || description.includes(activeQuery))) {
                         matchPercent = 90 + (mod.mod_id % 9);
                     } else if (aiQuery && (title.includes(aiQuery) || description.includes(aiQuery))) {
@@ -910,10 +937,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 mod.matchPercent = matchPercent;
             });
 
-            // Hesaplanan bu AI Oranına göre diziyi EN BÜYÜKTEN EN KÜÇÜĞE % olarak sırala!
-            // (Sunucu zaten sıralıyor ama biz matchPercent'e göre burda da emin olalım)
             modsArray.sort((a, b) => b.matchPercent - a.matchPercent);
-
             currentModsData = modsArray;
             currentModIndex = 0;
 
@@ -924,11 +948,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if(loadMoreBtn) loadMoreBtn.style.display = "none";
             }
             
-            // Yeni içeriği göster
             container.style.opacity = '1';
             container.style.transform = 'translateY(0)';
             
-            // Başlıkları güncelle
             const sectionHeaderH2 = document.querySelector(".section-header h2");
             const sectionHeaderP = document.querySelector(".section-header p");
             sectionHeaderH2.innerHTML = `<ion-icon name="sparkles-outline" style="color: #7c3aed;"></ion-icon> Yapay Zeka Arama Sonuçları`;
@@ -939,7 +961,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             sectionHeaderP.innerHTML = descriptionHTML;
             
-            // Arama kutusunu boşalt ve AI yükleme perdesini kaldır
             if (inputField) inputField.value = '';
             if (overlay) overlay.classList.remove("active");
             
@@ -952,8 +973,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                           Arka Plan (Node.js) Sunucusuna ulaşılamadı.
                                       </p>
                                       <p style="color: #94a3b8; margin-top: 1rem;">
-                                          Node.js sunucusunu terminalden (<code>node server.js</code>) başlattığınıza emin olun. <br/>
-                                          (Hata detayı: ${error.message})
+                                          Node.js sunucusunu terminalden (<code>node server.js</code>) başlattığınıza emin olun. <br/><br/>
+                                          <strong>Hata detayı:</strong> ${error.message}
                                       </p>
                                    </div>`;
             container.style.opacity = '1';
@@ -970,7 +991,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         try {
             currentGameDomain = gameSelectValue ? gameSelectValue.value : "all";
-            const apiUrl = `/api/top-mods?game=${currentGameDomain}`;
+            const apiUrl = `${apiBase}/api/top-mods?game=${currentGameDomain}`;
             
             const response = await fetch(apiUrl);
             

@@ -20,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
 let genAI, model;
 if (process.env.GEMINI_API_KEY) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 }
 
 // Temel Türkçe - İngilizce Mod Terimleri Sözlüğü (AI çalışmasa bile temel arama desteği için)
@@ -132,8 +132,10 @@ app.get('/api/search', async (req, res) => {
         }
 
         // 2. Kullanıcının aradığı kelimeyi (query) bulutta arıyoruz (NLP/Metin Eşleştirme)
-        let lowerQuery = query.toLowerCase();
+        let lowerQuery = query ? query.toLowerCase() : "";
         let aiEnhancedQuery = lowerQuery;
+
+        console.log(`🔍 Arama İsteği: q="${query}", game="${gameDomain}"`);
 
         // EĞER sorgu Türkçe karakterler içeriyorsa veya kullanıcı "ne istediğini" anlatıyorsa AI devreye girsin
         if (lowerQuery.length >= 2) {
@@ -143,30 +145,37 @@ app.get('/api/search', async (req, res) => {
         }
         
         // Eğer aranan kelime 2 karakterden uzun veya eşitse filtrelemeyi yap
-        if (aiEnhancedQuery.length >= 2) {
+        if (aiEnhancedQuery && aiEnhancedQuery.length >= 2) {
             // Hem orijinal sorguyu hem AI çevirisini kullanarak daha geniş bir havuzda ara
             filterCondition.$text = { $search: `${lowerQuery} ${aiEnhancedQuery}` };
         }
         
-        // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
-        // Text search score (relevance) ekliyoruz ve buna göre sıralıyoruz
-        let filteredMods = await Mod.find(
-            filterCondition,
-            { score: { $meta: "textScore" } }
-        ).sort({ score: { $meta: "textScore" } }).limit(1000).lean();
+        console.log("🛠️ MongoDB Filtresi:", JSON.stringify(filterCondition));
 
-        // Sonuçları her seferinde aralarında hafif karıştırarak listele (Eğer arama puanları çok yakınsa çeşitlilik sağlar)
-        // filteredMods = filteredMods.sort(() => Math.random() - 0.5);
+        // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
+        let filteredMods;
+        if (filterCondition.$text) {
+            // Text search score (relevance) ekliyoruz ve buna göre sıralıyoruz
+            filteredMods = await Mod.find(
+                filterCondition,
+                { score: { $meta: "textScore" } }
+            ).sort({ score: { $meta: "textScore" } }).limit(1000).lean();
+        } else {
+            // Text search yoksa indirme sayısına göre sırala (Örn: Keşfet sayfası açılışı)
+            filteredMods = await Mod.find(filterCondition).sort({ mod_downloads: -1 }).limit(1000).lean();
+        }
+
+        console.log(`📊 Bulunan Mod Sayısı: ${filteredMods.length}`);
 
         res.json({ 
             mods: filteredMods, 
-            aiQuery: aiEnhancedQuery // İstemciye neyi aradığımızı da söyleyelim
+            aiQuery: aiEnhancedQuery 
         });
 
     } catch (error) {
-        console.error("Bulut (MongoDB Atlas) Veritabanı Arama Hatası:");
-        console.error(error.message);
-        res.status(500).json({ error: 'Sunucu tarafında yerel veritabanı aranırken bir hata oluştu.' });
+        console.error("❌ Arama Hatası Detayı:");
+        console.error(error);
+        res.status(500).json({ error: 'Veritabanı araması sırasında sunucu hatası oluştu.', message: error.message });
     }
 });
 
@@ -229,8 +238,8 @@ const User = require('./models/User');
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (!username || !password || username.length < 3 || password.length < 5) {
-            return res.status(400).json({ error: 'Kullanıcı adı en az 3, şifre en az 5 karakter olmalıdır.' });
+        if (!username || !password || username.length < 3 || password.length < 6) {
+            return res.status(400).json({ error: 'Kullanıcı adı en az 3, şifre en az 6 karakter olmalıdır.' });
         }
 
         const existingUser = await User.findOne({ username });
@@ -243,7 +252,13 @@ app.post('/api/auth/register', async (req, res) => {
         await newUser.save();
 
         const token = jwt.sign({ id: newUser._id, username: newUser.username }, JWT_SECRET, { expiresIn: '30d' });
-        res.status(201).json({ token, username: newUser.username, favorites: newUser.favorites, avatarSeed: newUser.avatarSeed });
+        res.status(201).json({ 
+            token, 
+            username: newUser.username, 
+            favorites: newUser.favorites, 
+            avatarSeed: newUser.avatarSeed,
+            preferences: newUser.preferences 
+        });
     } catch (err) {
         res.status(500).json({ error: 'Kayıt olurken bir hata oluştu.' });
     }
@@ -264,7 +279,13 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-        res.json({ token, username: user.username, favorites: user.favorites, avatarSeed: user.avatarSeed || "" });
+        res.json({ 
+            token, 
+            username: user.username, 
+            favorites: user.favorites, 
+            avatarSeed: user.avatarSeed || "",
+            preferences: user.preferences 
+        });
     } catch (err) {
         res.status(500).json({ error: 'Giriş yapılırken sunucu hatası.' });
     }
