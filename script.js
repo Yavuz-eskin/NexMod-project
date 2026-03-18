@@ -59,6 +59,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const sidebarPrefsBtn = document.getElementById("sidebar-prefs-btn");
     const logoutBtn = document.getElementById("logout-btn");
 
+    // Mobile Menu
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const mobileNavDiscover = document.getElementById("mobile-nav-discover");
+    const mobileNavTop = document.getElementById("mobile-nav-top");
+    const mobileNavFavorites = document.getElementById("mobile-nav-favorites");
+    const sidebarProfileSection = document.querySelector(".sidebar-profile-section");
+
     // Port/Proxy Yardımcısı: Frontend farklı portta veya file:// protocolündeyse 3000'e zorla
     const getApiBase = () => {
         if (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')) {
@@ -410,8 +417,26 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener("click", () => {
+            toggleSidebar();
+        });
+    }
+
     function toggleSidebar() {
         if (!userSidebar) return;
+        
+        // Misafir kullanıcılar için profil kısmını gizle
+        if (!currentUser && sidebarProfileSection) {
+            sidebarProfileSection.style.display = "none";
+            if(logoutBtn) logoutBtn.style.display = "none";
+            if(sidebarUserName) sidebarUserName.innerText = "Misafir";
+            if(sidebarUserImg) sidebarUserImg.src = "https://api.dicebear.com/6.x/avataaars/svg?seed=Guest";
+        } else if (sidebarProfileSection) {
+            sidebarProfileSection.style.display = "block";
+            if(logoutBtn) logoutBtn.style.display = "flex";
+        }
+
         userSidebar.classList.toggle("active");
         if(sidebarOverlay) sidebarOverlay.classList.toggle("active");
     }
@@ -620,6 +645,29 @@ document.addEventListener("DOMContentLoaded", () => {
         mainLogoLink.addEventListener("click", (e) => {
             e.preventDefault();
             if(navDiscover) navDiscover.click();
+        });
+    }
+
+    // Mobil Menü Linkleri
+    if (mobileNavDiscover) {
+        mobileNavDiscover.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            if(navDiscover) navDiscover.click();
+        });
+    }
+    if (mobileNavTop) {
+        mobileNavTop.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            if(navTop) navTop.click();
+        });
+    }
+    if (mobileNavFavorites) {
+        mobileNavFavorites.addEventListener("click", (e) => {
+            e.preventDefault();
+            closeSidebar();
+            if(navFavorites) navFavorites.click();
         });
     }
 
