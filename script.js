@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const navDiscover = document.getElementById("nav-discover");
     const navTop = document.getElementById("nav-top");
     const navFavorites = document.getElementById("nav-favorites");
+    const mainLogoLink = document.getElementById("main-logo-link");
 
     const userProfileBtn = document.getElementById("user-profile-btn");
     const userNameDisplay = document.getElementById("user-name-display");
@@ -614,7 +615,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 3000);
     }
 
-    // -- Menü Yönlendirmeleri (Keşfet / Çok Sevilenler) --
+    // -- Menü Yönlendirmeleri (Logo / Keşfet / Çok Sevilenler) --
+    if (mainLogoLink) {
+        mainLogoLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            if(navDiscover) navDiscover.click();
+        });
+    }
+
     if (navTop) {
         navTop.addEventListener("click", (e) => {
             e.preventDefault();
