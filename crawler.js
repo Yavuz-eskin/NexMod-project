@@ -77,6 +77,10 @@ async function crawlMods() {
                         if (!seenIds.has(uniqueIdentifier)) {
                             seenIds.add(uniqueIdentifier);
                             mod.domain_name = game;
+                            // Truncate description to 500 characters for storage optimization
+                            if (mod.description && mod.description.length > 500) {
+                                mod.description = mod.description.substring(0, 500);
+                            }
                             allMods.push(mod);
                         }
                     });
@@ -138,6 +142,11 @@ async function crawlMods() {
                 }
 
                 mod.domain_name = game;
+
+                // Truncate description to 500 characters for storage optimization
+                if (mod.description && mod.description.length > 500) {
+                    mod.description = mod.description.substring(0, 500);
+                }
 
                 await Mod.updateOne(
                     { domain_name: mod.domain_name, mod_id: mod.mod_id },

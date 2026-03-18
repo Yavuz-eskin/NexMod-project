@@ -22,4 +22,12 @@ ModSchema.index({ domain_name: 1, mod_id: 1 }, { unique: true });
 // Text indices for robust search functionality
 ModSchema.index({ name: 'text', summary: 'text', description: 'text' });
 
+// Pre-save hook to truncate description to 500 characters to save storage
+ModSchema.pre('save', function(next) {
+    if (this.description && this.description.length > 500) {
+        this.description = this.description.substring(0, 500);
+    }
+    next();
+});
+
 module.exports = mongoose.model('Mod', ModSchema);

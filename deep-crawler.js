@@ -72,6 +72,11 @@ async function deepCrawl() {
                 // Gelen datada domain_name var mı kontrol et, yoksa biz ekleyelim
                 mod.domain_name = mod.domain_name || game;
 
+                // Truncate description to 500 characters for storage optimization
+                if (mod.description && mod.description.length > 500) {
+                    mod.description = mod.description.substring(0, 500);
+                }
+
                 // Veritabanına kaydet
                 await Mod.updateOne(
                     { domain_name: mod.domain_name, mod_id: mod.mod_id },
