@@ -89,6 +89,18 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: var(--text-main);
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    user-select: none;
+}
+
+.logo:hover {
+    transform: scale(1.03);
+}
+
+.logo:active {
+    transform: scale(0.97);
 }
 
 .logo ion-icon {
