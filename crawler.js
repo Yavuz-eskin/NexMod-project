@@ -105,83 +105,78 @@ async function crawlMods() {
         } catch(e) {}
     }
     
-    // ----- BÖLÜM 2: DERİN TARAMA (Her Oyun İçin İlk 250 Modu Garantile) -----
-    // Kotayı korumak için, veritabanında ZATEN KAYITLI modları es geçer!
-    console.log(`\n>>> Derin Tarama (Deep Crawl) Başlıyor: 30 Oyun x 250 Mod Hedefi (Kota Korumalı)`);
+    // ----- BÖLÜM 2: SÜREKLİ BÜYÜYEN DERİN TARAMA (Her Gece Her Oyun İçin +250 Yeni Mod) -----
+    // Bu bölüm her oyunun veritabanındaki son kaldığı ID'yi bulur ve üzerine 250 yeni mod ekler.
+    console.log(`\n>>> Derin Tarama Başlıyor: Her oyun için +250 yeni mod hedefleniyor...`);
     let deepInsertedCount = 0;
     
     for (const game of TOP_GAMES) {
-        console.log(`[${game}] için ilk 250 mod garantisi kontrol ediliyor...`);
+        // 1. Bu oyun için veritabanındaki en yüksek (en son) mod_id'yi buluyoruz
+        const lastMod = await Mod.findOne({ domain_name: game }).sort({ mod_id: -1 });
+        let startId = lastMod ? lastMod.mod_id + 1 : 1;
+        
+        console.log(`[${game}] için tarama ID ${startId} noktasından başlıyor...`);
         let gameDeepAddedCount = 0;
+        let currentId = startId;
+        let attemptCount = 0; // Çok fazla boş ID varsa sonsuz döngü koruması (Max 2000 deneme)
 
-        let validModsCount = 0; // Bu sayaç 250 olana kadar devam edecek
-        let modId = 1;
-
-        // Tam olarak 250 adet geçerli mod bulana kadar (veya günlük kotayı sömürmemek için max 400 id denemesi bitene kadar)
-        while (validModsCount < 250 && modId <= 400) {
-            // VERİTABANI: Bu ID veritabanımızda zaten var mı? Varsa API'ye hiç gidip kota harcama!
-            const exists = await Mod.exists({ domain_name: game, mod_id: modId });
-            if (exists) {
-                validModsCount++; // Veritabanında zaten geçerli olarak kayıtlı
-                modId++;
-                continue; // Atla ve sonrakine geç
-            }
-
-            // Veritabanında yoksa, mecbur Nexus'un kapısını çalacağız
-            const url = `https://api.nexusmods.com/v1/games/${game}/mods/${modId}.json`;
+        // Tam 250 tane başarılı yeni kayıt yapana kadar devam et
+        while (gameDeepAddedCount < 250 && attemptCount < 2000) {
+            attemptCount++;
+            
+            const url = `https://api.nexusmods.com/v1/games/${game}/mods/${currentId}.json`;
             try {
                 const res = await axios.get(url, {
                     headers: { 'accept': 'application/json', 'apikey': API_KEY }
                 });
                 const mod = res.data;
 
-                if (!mod.name || mod.name.trim() === '' || mod.status === 'hidden' || mod.status === 'not_published') {
-                    await sleep(300);
-                    modId++;
-                    continue; // Bu Gizli/Bozuk bir mod, sayaç ASLA artmaz!
+                // Geçerli, yayında olan ve gizlenmemiş bir mod mu?
+                if (mod.name && mod.name.trim() !== '' && mod.status !== 'hidden' && mod.status !== 'not_published') {
+                    mod.domain_name = game;
+                    
+                    // Açıklama Metni Kısaltma (Storage Tasarrufu için Model'de de var ama burada da yapıyoruz)
+                    if (mod.description && mod.description.length > 500) {
+                        mod.description = mod.description.substring(0, 500);
+                    }
+
+                    await Mod.updateOne(
+                        { domain_name: mod.domain_name, mod_id: mod.mod_id },
+                        { $set: mod },
+                        { upsert: true }
+                    );
+
+                    gameDeepAddedCount++;
+                    deepInsertedCount++;
                 }
-
-                mod.domain_name = game;
-
-                // Truncate description to 500 characters for storage optimization
-                if (mod.description && mod.description.length > 500) {
-                    mod.description = mod.description.substring(0, 500);
-                }
-
-                await Mod.updateOne(
-                    { domain_name: mod.domain_name, mod_id: mod.mod_id },
-                    { $set: mod },
-                    { upsert: true }
-                );
-
-                validModsCount++; // Gerçekten başarılı bir mod çektik!
-                gameDeepAddedCount++;
-                deepInsertedCount++;
-
             } catch (error) {
-                // Eğer hata 429 (Too Many Requests - Günlük Limit Bitti) ise tüm döngüyü kırıp çık!
+                // Eğer günlük 10.000 istek sınırı (429) dolduysa tüm robotu durdur!
                 if (error.response && error.response.status === 429) {
-                    console.error("⛔ KRİTİK UYARI: NexusMods Günlük (10.000) İstek Limiti Doldu! Bot uykuya alınıyor.");
-                    return (insertedTrendCount + deepInsertedCount); // Direkt uygulamayı bitir ve raporla
+                    console.error("⛔ KRİTİK UYARI: NexusMods Günlük (10.000) İstek Limiti Doldu! Tarama durduruluyor.");
+                    return (insertedTrendCount + deepInsertedCount);
                 }
                 
-                // Diğer Silinmiş/Premium veya 404 hatalarıysa dert etmeden atla
+                // 404 (Mod silinmiş) veya diğer hatalarda bir sonraki ID'ye geç
+                if (error.response && (error.response.status === 404 || error.response.status === 403)) {
+                     // Bunlar normal durumlar (silinmiş veya premium modlar)
+                } else {
+                    console.warn(`[${game} - ID: ${currentId}] Beklenmeyen hata:`, error.message);
+                }
             }
 
-            modId++;
-            await sleep(500); // Saniyede 2 istek ile ban yemekten kurtuluruz (0.5 saniye bekleme)
+            currentId++;
+            await sleep(400); // API ban koruması (Nexus saniyede 5 istekten fazlasına kızabilir)
         }
         
-        if(gameDeepAddedCount > 0) {
-            console.log(`[${game}] oyununa ${gameDeepAddedCount} TANE YENİ (eksik) mod çekildi.`);
-        }
+        console.log(`[${game}] oyununa ${gameDeepAddedCount} TANE YENİ mod çekildi. (Son taranan ID: ${currentId-1})`);
     }
     
     console.log('--------------------------------------------------');
-    console.log(`✅ İşlem Tamamlandı! Toplam İşlenen Yeni Modlar: ${insertedTrendCount + deepInsertedCount}`);
-    console.log('Zamanlanmış Gece Botu Uyku Moduna Geçiyor...');
+    console.log(`✅ Gece Senkronizasyonu Tamamlandı! Toplam İşlenen Yeni Mod: ${insertedTrendCount + deepInsertedCount}`);
+    console.log('Zamanlanmış Robot Uyku Moduna Geçiyor...');
     
     return (insertedTrendCount + deepInsertedCount);
+
 }
 
 // Eğer bu dosya terminalden tek başına "node crawler.js" olarak çalıştırıldıysa process.exit çağır
