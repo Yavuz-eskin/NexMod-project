@@ -31,14 +31,14 @@ async function crawlMods() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     const HEADERS = { 'accept': 'application/json', 'apikey': API_KEY };
 
-    // 1. En Popüler 30 Oyunu Belirle (Veya manuel liste ile birleştir)
+    // 1. En Popüler 60 Oyunu Belirle (Filtreyi 60'a çıkardık)
     let TOP_GAMES = [];
     try {
         const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', { headers: HEADERS });
         TOP_GAMES = gamesRes.data
             .filter(g => g.downloads && g.downloads >= 500000)
             .sort((a, b) => b.downloads - a.downloads)
-            .slice(0, 30)
+            .slice(0, 60) // En tepe 60 oyun taranacak
             .map(g => g.domain_name);
         console.log(`Top ${TOP_GAMES.length} popüler oyun taranacak.`);
     } catch (err) {
