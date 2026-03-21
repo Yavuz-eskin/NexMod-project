@@ -6,8 +6,12 @@ const Mod = require('./models/Mod');
 const API_KEY = process.env.NEXUS_API_KEY;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Projemizin yerel veri tabanını oluşturacağımız popüler oyunlar havuzu dinamik olarak yüklenecektir.
-
+/**
+ * Optimizasyonlu NexusMods Crawler (Bot)
+ * 1. Geleceğe (henüz olmayan ID'lere) istek atıp kotayı harcamaz (Tavan ID kontrolü).
+ * 2. Eğer o gün yeni mod yoksa, veritabanındaki boşlukları (eski modları) doldurur (Gap Filler).
+ * 3. 10.000 API kotalı bir günde maksimum veriyi (7000+) çekebilmeyi hedefler.
+ */
 async function crawlMods() {
     if (!API_KEY || !MONGO_URI) {
         console.error("HATA: .env dosyasında NEXUS_API_KEY veya MONGO_URI bulunamadı!");
@@ -15,179 +19,144 @@ async function crawlMods() {
     }
 
     try {
-        console.log("MongoDB Atlas'a bağlanılıyor...");
-        await mongoose.connect(MONGO_URI);
-        console.log("MongoDB bağlantısı başarılı!");
+        if (mongoose.connection.readyState === 0) {
+            await mongoose.connect(MONGO_URI);
+            console.log("MongoDB bağlantısı başarılı!");
+        }
     } catch(err) {
         console.error("MongoDB bağlantı hatası:", err);
         return;
     }
 
-    console.log("Nexus Crawler (Bot) başlatılıyor... Veritabanı toplanıyor, lütfen bekleyin.");
-    
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    const HEADERS = { 'accept': 'application/json', 'apikey': API_KEY };
+
+    // 1. En Popüler 30 Oyunu Belirle (Veya manuel liste ile birleştir)
     let TOP_GAMES = [];
     try {
-        console.log("Nexus API'den oyunların listesi çekiliyor...");
-        const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', {
-            headers: { 'accept': 'application/json', 'apikey': API_KEY }
-        });
-        
-        // Sadece 500.000 (Yarım Milyon) ve üstü indirmesi olan Popüler Oyunları Filtreliyoruz!
-        // Toplam dev oyunlar arasından EN popüler ilk 30 tanesini alıyoruz
-        const popularGames = gamesRes.data
+        const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', { headers: HEADERS });
+        TOP_GAMES = gamesRes.data
             .filter(g => g.downloads && g.downloads >= 500000)
-            .sort((a, b) => b.downloads - a.downloads) // En çok indirilenden en aza sıralar
-            .slice(0, 30); // Sadece En tepe 30 oyunu alır
-            
-        TOP_GAMES = popularGames.map(g => g.domain_name);
-        console.log(`Filtreleme & Sıralama Tamamlandı: En popüler ${TOP_GAMES.length} oyun taranacak.`);
+            .sort((a, b) => b.downloads - a.downloads)
+            .slice(0, 30)
+            .map(g => g.domain_name);
+        console.log(`Top ${TOP_GAMES.length} popüler oyun taranacak.`);
     } catch (err) {
         console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
         return;
     }
 
-    // Bekleme fonskiyonumuz
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    let globalRequests = 0;
+    const MAX_DAILY_REQUESTS = 9500; // 10.000 sınıra dayanmadan güvenli duruş
+    let totalInserted = 0;
 
-    let allMods = [];
-    let seenIds = new Set();
-    
-    // ----- BÖLÜM 1: GÜNLÜK TREND MODLAR ve YENİLER (Oyun basina ~30-40 adet) -----
     for (const game of TOP_GAMES) {
-        try {
-            console.log(`\n[${game}] Trend Modları Çekiliyor...`);
-            const endpoints = [
-                `https://api.nexusmods.com/v1/games/${game}/mods/trending.json`,
-                `https://api.nexusmods.com/v1/games/${game}/mods/latest_added.json`,
-                `https://api.nexusmods.com/v1/games/${game}/mods/latest_updated.json`
-            ];
-            
-            for (const endpoint of endpoints) {
-                const res = await axios.get(endpoint, {
-                    headers: { 'accept': 'application/json', 'apikey': API_KEY }
-                }).catch(e => { return {data: []}; }); 
-                
-                await sleep(300);
+        if (globalRequests >= MAX_DAILY_REQUESTS) {
+            console.log("⚠️ Günlük güvenli istek limitine (9,500) ulaşıldı. Tarama kesiliyor.");
+            break;
+        }
 
-                if (res.data && Array.isArray(res.data)) {
-                    res.data.forEach(mod => {
-                        if (!mod.name || mod.name.trim() === '') return;
-                        
-                        const uniqueIdentifier = `${game}_${mod.mod_id}`;
-                        if (!seenIds.has(uniqueIdentifier)) {
-                            seenIds.add(uniqueIdentifier);
-                            mod.domain_name = game;
-                            // Truncate description to 500 characters for storage optimization
-                            if (mod.description && mod.description.length > 500) {
-                                mod.description = mod.description.substring(0, 500);
-                            }
-                            allMods.push(mod);
+        console.log(`\n>>> [${game.toUpperCase()}] Taraması Başlıyor...`);
+
+        try {
+            // A. Nexus'taki en son modun ID'sini bul (Ceiling/Tavan ID)
+            const latestAddedRes = await axios.get(`https://api.nexusmods.com/v1/games/${game}/mods/latest_added.json`, { headers: HEADERS });
+            globalRequests++;
+            const nexusMaxId = (latestAddedRes.data && latestAddedRes.data.length > 0) ? latestAddedRes.data[0].mod_id : 1000000;
+
+            // B. Veritabanımızdaki bu oyun için en yüksek ID'yi bul (Forward Scan başlangıcı)
+            const dbLastMod = await Mod.findOne({ domain_name: game }).sort({ mod_id: -1 });
+            let dbMaxId = dbLastMod ? dbLastMod.mod_id : 0;
+
+            console.log(` - Nexus Tavan: ${nexusMaxId}, Bizim Max: ${dbMaxId}`);
+
+            // C. Akıllı Başlangıç Noktası (İleri git veya Boşlukları Doldur)
+            let currentId;
+            let targetForThisGame = 250; 
+            let addedForGame = 0;
+            let failureStreak = 0; // Çok fazla 404 alınırsa o oyunu geç
+
+            if (dbMaxId >= nexusMaxId) {
+                // Eğer güncelsek, eski modlardaki boşlukları doldurmak için rastgele bir pencere seç
+                console.log(` ! Oyun zaten en güncel ID'ye ulaşmış. Tarihsel boşluk doldurma (Gap-Filling) aktif.`);
+                currentId = Math.floor(Math.random() * nexusMaxId);
+            } else {
+                currentId = dbMaxId + 1; // Yeni çıkanları tara
+            }
+
+            while (addedForGame < targetForThisGame && failureStreak < 200 && globalRequests < MAX_DAILY_REQUESTS) {
+                // Eğer tavanı aşarsak veya sona yaklaşırsak başa dön
+                if (currentId > nexusMaxId) {
+                    currentId = Math.floor(Math.random() * (nexusMaxId * 0.5)); // Eskilere git
+                }
+
+                // API İsteği atmadan önce DB'de var mı kontrol et (Daha önce çekilmiş olabilir)
+                const alreadyHave = await Mod.exists({ domain_name: game, mod_id: currentId });
+                if (alreadyHave) {
+                    currentId++;
+                    continue; 
+                }
+
+                try {
+                    const modUrl = `https://api.nexusmods.com/v1/games/${game}/mods/${currentId}.json`;
+                    const res = await axios.get(modUrl, { headers: HEADERS });
+                    globalRequests++;
+                    const modData = res.data;
+
+                    // Geçerli bir mod mu? (Gizli/Silinmiş değilse)
+                    if (modData.name && modData.status !== 'hidden' && modData.status !== 'not_published') {
+                        modData.domain_name = game;
+                        // Storage optimizasyonu: Açıklamayı kısalt
+                        if (modData.description && modData.description.length > 500) {
+                            modData.description = modData.description.substring(0, 500);
                         }
-                    });
-                }
-            }
-        } catch(error) {
-            console.error(`[${game}] Trendler çekilirken hata oluştu:`, error.message);
-        }
-    }
 
-    // Trendleri MongoDB'ye Upsert edelim
-    console.log(`\nSunucuda toplanan ${allMods.length} trend mod veritabanına işleniyor...`);
-    let insertedTrendCount = 0;
-    for (const dataItem of allMods) {
-        try {
-            await Mod.updateOne(
-                { domain_name: dataItem.domain_name, mod_id: dataItem.mod_id },
-                { $set: dataItem },
-                { upsert: true }
-            );
-            insertedTrendCount++;
-        } catch(e) {}
-    }
-    
-    // ----- BÖLÜM 2: SÜREKLİ BÜYÜYEN DERİN TARAMA (Her Gece Her Oyun İçin +250 Yeni Mod) -----
-    // Bu bölüm her oyunun veritabanındaki son kaldığı ID'yi bulur ve üzerine 250 yeni mod ekler.
-    console.log(`\n>>> Derin Tarama Başlıyor: Her oyun için +250 yeni mod hedefleniyor...`);
-    let deepInsertedCount = 0;
-    
-    for (const game of TOP_GAMES) {
-        // 1. Bu oyun için veritabanındaki en yüksek (en son) mod_id'yi buluyoruz
-        const lastMod = await Mod.findOne({ domain_name: game }).sort({ mod_id: -1 });
-        let startId = lastMod ? lastMod.mod_id + 1 : 1;
-        
-        console.log(`[${game}] için tarama ID ${startId} noktasından başlıyor...`);
-        let gameDeepAddedCount = 0;
-        let currentId = startId;
-        let attemptCount = 0; // Çok fazla boş ID varsa sonsuz döngü koruması (Max 2000 deneme)
-
-        // Tam 250 tane başarılı yeni kayıt yapana kadar devam et
-        while (gameDeepAddedCount < 250 && attemptCount < 2000) {
-            attemptCount++;
-            
-            const url = `https://api.nexusmods.com/v1/games/${game}/mods/${currentId}.json`;
-            try {
-                const res = await axios.get(url, {
-                    headers: { 'accept': 'application/json', 'apikey': API_KEY }
-                });
-                const mod = res.data;
-
-                // Geçerli, yayında olan ve gizlenmemiş bir mod mu?
-                if (mod.name && mod.name.trim() !== '' && mod.status !== 'hidden' && mod.status !== 'not_published') {
-                    mod.domain_name = game;
-                    
-                    // Açıklama Metni Kısaltma (Storage Tasarrufu için Model'de de var ama burada da yapıyoruz)
-                    if (mod.description && mod.description.length > 500) {
-                        mod.description = mod.description.substring(0, 500);
+                        await Mod.updateOne(
+                            { domain_name: game, mod_id: modData.mod_id },
+                            { $set: modData },
+                            { upsert: true }
+                        );
+                        addedForGame++;
+                        totalInserted++;
+                        failureStreak = 0; 
                     }
+                } catch (err) {
+                    globalRequests++;
+                    if (err.response && err.response.status === 429) {
+                        console.error("⛔ [KRİTİK] 429 Limit Hatası! Robot duruyor.");
+                        return totalInserted;
+                    }
+                    if (err.response && (err.response.status === 404 || err.response.status === 403)) {
+                        failureStreak++; // Bulunamayan veya Premium modlar
+                    }
+                }
 
-                    await Mod.updateOne(
-                        { domain_name: mod.domain_name, mod_id: mod.mod_id },
-                        { $set: mod },
-                        { upsert: true }
-                    );
-
-                    gameDeepAddedCount++;
-                    deepInsertedCount++;
-                }
-            } catch (error) {
-                // Eğer günlük 10.000 istek sınırı (429) dolduysa tüm robotu durdur!
-                if (error.response && error.response.status === 429) {
-                    console.error("⛔ KRİTİK UYARI: NexusMods Günlük (10.000) İstek Limiti Doldu! Tarama durduruluyor.");
-                    return (insertedTrendCount + deepInsertedCount);
-                }
-                
-                // 404 (Mod silinmiş) veya diğer hatalarda bir sonraki ID'ye geç
-                if (error.response && (error.response.status === 404 || error.response.status === 403)) {
-                     // Bunlar normal durumlar (silinmiş veya premium modlar)
-                } else {
-                    console.warn(`[${game} - ID: ${currentId}] Beklenmeyen hata:`, error.message);
-                }
+                currentId++;
+                await sleep(350); // Nexus API ban koruması
             }
+            console.log(` ✅ [${game}] bitti. Eklenen: ${addedForGame}, Toplam global istek: ${globalRequests}`);
 
-            currentId++;
-            await sleep(400); // API ban koruması (Nexus saniyede 5 istekten fazlasına kızabilir)
+        } catch (gameErr) {
+            console.warn(` [${game}] işlenirken hata oluştu:`, gameErr.message);
         }
-        
-        console.log(`[${game}] oyununa ${gameDeepAddedCount} TANE YENİ mod çekildi. (Son taranan ID: ${currentId-1})`);
     }
-    
-    console.log('--------------------------------------------------');
-    console.log(`✅ Gece Senkronizasyonu Tamamlandı! Toplam İşlenen Yeni Mod: ${insertedTrendCount + deepInsertedCount}`);
-    console.log('Zamanlanmış Robot Uyku Moduna Geçiyor...');
-    
-    return (insertedTrendCount + deepInsertedCount);
 
+    console.log('--------------------------------------------------');
+    console.log(`✅ Senkronizasyon Bitti! Yeni Eklenen Toplam Mod: ${totalInserted}`);
+    console.log(`Harcanan Toplam Kota: ${globalRequests} / 10,000`);
+    
+    return totalInserted;
 }
 
-// Eğer bu dosya terminalden tek başına "node crawler.js" olarak çalıştırıldıysa process.exit çağır
+// Direk çalıştırma desteği (Cron veya Terminal)
 if (require.main === module) {
-    crawlMods().then(() => {
+    crawlMods().then((count) => {
+        console.log(`🤖 Robot işini bitirdi. (${count} mod)`);
         process.exit(0);
     }).catch(err => {
-        console.error(err);
+        console.error("Robot beklenmedik bir şekilde durdu:", err);
         process.exit(1);
     });
 }
 
-// Eğer server.js gibi başka bir koddan çağrılırsa diye export et
 module.exports = crawlMods;
