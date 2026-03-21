@@ -31,16 +31,16 @@ async function crawlMods() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     const HEADERS = { 'accept': 'application/json', 'apikey': API_KEY };
 
-    // 1. En Popüler 60 Oyunu Belirle (Filtreyi 60'a çıkardık)
+    // 1. Oyun Havuzu: 31. ile 60. sıra arasındaki oyunlar (İstediğiniz aralık)
     let TOP_GAMES = [];
     try {
         const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', { headers: HEADERS });
         TOP_GAMES = gamesRes.data
             .filter(g => g.downloads && g.downloads >= 500000)
             .sort((a, b) => b.downloads - a.downloads)
-            .slice(0, 60) // En tepe 60 oyun taranacak
+            .slice(30, 60) // Tam olarak 31-60 arası
             .map(g => g.domain_name);
-        console.log(`Top ${TOP_GAMES.length} popüler oyun taranacak.`);
+        console.log(`Hedef Aralıktaki ${TOP_GAMES.length} oyun taranacak (31-60).`);
     } catch (err) {
         console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
         return;
