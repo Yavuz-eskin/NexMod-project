@@ -23,7 +23,7 @@ async function crawlMods() {
             await mongoose.connect(MONGO_URI);
             console.log("MongoDB bağlantısı başarılı!");
         }
-    } catch(err) {
+    } catch (err) {
         console.error("MongoDB bağlantı hatası:", err);
         return;
     }
@@ -38,9 +38,9 @@ async function crawlMods() {
         TOP_GAMES = gamesRes.data
             .filter(g => g.downloads && g.downloads >= 500000)
             .sort((a, b) => b.downloads - a.downloads)
-            .slice(30, 60) // Tam olarak 31-60 arası
+            .slice(0, 30) // Tam olarak 31-60 arası
             .map(g => g.domain_name);
-        console.log(`Hedef Aralıktaki ${TOP_GAMES.length} oyun taranacak (31-60).`);
+        console.log(`Hedef Aralıktaki ${TOP_GAMES.length} oyun taranacak (1-30).`);
     } catch (err) {
         console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
         return;
@@ -54,6 +54,12 @@ async function crawlMods() {
         if (globalRequests >= MAX_DAILY_REQUESTS) {
             console.log("⚠️ Günlük güvenli istek limitine (9,500) ulaşıldı. Tarama kesiliyor.");
             break;
+        }
+
+        // --- OYUN FİLTRELEME VE ÖZEL LİMİTLER ---
+        if (game === 'skyrim') {
+            console.log(`\n>>> [${game.toUpperCase()}] İsteğiniz üzerine paslanıyor (0 mod).`);
+            continue; 
         }
 
         console.log(`\n>>> [${game.toUpperCase()}] Taraması Başlıyor...`);
@@ -72,7 +78,7 @@ async function crawlMods() {
 
             // C. Akıllı Başlangıç Noktası (İleri git veya Boşlukları Doldur)
             let currentId;
-            let targetForThisGame = 250; 
+            let targetForThisGame = (game === 'skyrimspecialedition') ? 500 : 250;
             let addedForGame = 0;
             let failureStreak = 0; // Çok fazla 404 alınırsa o oyunu geç
 
@@ -94,7 +100,7 @@ async function crawlMods() {
                 const alreadyHave = await Mod.exists({ domain_name: game, mod_id: currentId });
                 if (alreadyHave) {
                     currentId++;
-                    continue; 
+                    continue;
                 }
 
                 try {
@@ -118,7 +124,7 @@ async function crawlMods() {
                         );
                         addedForGame++;
                         totalInserted++;
-                        failureStreak = 0; 
+                        failureStreak = 0;
                     }
                 } catch (err) {
                     globalRequests++;
@@ -144,7 +150,7 @@ async function crawlMods() {
     console.log('--------------------------------------------------');
     console.log(`✅ Senkronizasyon Bitti! Yeni Eklenen Toplam Mod: ${totalInserted}`);
     console.log(`Harcanan Toplam Kota: ${globalRequests} / 10,000`);
-    
+
     return totalInserted;
 }
 
