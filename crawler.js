@@ -31,35 +31,27 @@ async function crawlMods() {
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     const HEADERS = { 'accept': 'application/json', 'apikey': API_KEY };
 
-    // 1. Oyun Havuzu: 31. ile 60. sıra arasındaki oyunlar (İstediğiniz aralık)
-    let TOP_GAMES = [];
-    try {
-        const gamesRes = await axios.get('https://api.nexusmods.com/v1/games.json', { headers: HEADERS });
-        TOP_GAMES = gamesRes.data
-            .filter(g => g.downloads && g.downloads >= 500000)
-            .sort((a, b) => b.downloads - a.downloads)
-            .slice(0, 30) // Tam olarak 31-60 arası
-            .map(g => g.domain_name);
-        console.log(`Hedef Aralıktaki ${TOP_GAMES.length} oyun taranacak (1-30).`);
-    } catch (err) {
-        console.error("Oyun listesi çekilemedi, bot durduruluyor:", err.message);
-        return;
-    }
+    // 1. Oyun Havuzu: Manuel Belirlenen Oyunlar
+    const GAME_LIMITS = {
+        'skyrimspecialedition': 7000,
+        'fallout4': 500,
+        'falloutnewvegas': 500,
+        'oblivion': 500,
+        'stardewvalley': 500,
+        'cyberpunk2077': 500,
+        'baldursgate3': 500
+    };
+    const TOP_GAMES = Object.keys(GAME_LIMITS);
+    console.log(`Hedeflenen ${TOP_GAMES.length} oyun taranacak.`);
 
     let globalRequests = 0;
-    const MAX_DAILY_REQUESTS = 9500; // 10.000 sınıra dayanmadan güvenli duruş
+    const MAX_DAILY_REQUESTS = 10000; // Limit 10,000 yapıldı
     let totalInserted = 0;
 
     for (const game of TOP_GAMES) {
         if (globalRequests >= MAX_DAILY_REQUESTS) {
-            console.log("⚠️ Günlük güvenli istek limitine (9,500) ulaşıldı. Tarama kesiliyor.");
+            console.log("⚠️ Günlük toplam limitine (10,000) ulaşıldı. Tarama kesiliyor.");
             break;
-        }
-
-        // --- OYUN FİLTRELEME VE ÖZEL LİMİTLER ---
-        if (game === 'skyrim') {
-            console.log(`\n>>> [${game.toUpperCase()}] İsteğiniz üzerine paslanıyor (0 mod).`);
-            continue; 
         }
 
         console.log(`\n>>> [${game.toUpperCase()}] Taraması Başlıyor...`);
@@ -76,27 +68,27 @@ async function crawlMods() {
 
             console.log(` - Nexus Tavan: ${nexusMaxId}, Bizim Max: ${dbMaxId}`);
 
-            // C. Akıllı Başlangıç Noktası (İleri git veya Boşlukları Doldur)
+            // C. Tarama Limitleri
             let currentId;
-            let targetForThisGame = (game === 'skyrimspecialedition') ? 500 : 250;
+            let requestsPerGameLimit = GAME_LIMITS[game] || 500;
+            let requestsForThisGame = 0;
             let addedForGame = 0;
-            let failureStreak = 0; // Çok fazla 404 alınırsa o oyunu geç
+            let failureStreak = 0;
 
             if (dbMaxId >= nexusMaxId) {
-                // Eğer güncelsek, eski modlardaki boşlukları doldurmak için rastgele bir pencere seç
                 console.log(` ! Oyun zaten en güncel ID'ye ulaşmış. Tarihsel boşluk doldurma (Gap-Filling) aktif.`);
                 currentId = Math.floor(Math.random() * nexusMaxId);
             } else {
-                currentId = dbMaxId + 1; // Yeni çıkanları tara
+                currentId = dbMaxId + 1;
             }
 
-            while (addedForGame < targetForThisGame && failureStreak < 200 && globalRequests < MAX_DAILY_REQUESTS) {
-                // Eğer tavanı aşarsak veya sona yaklaşırsak başa dön
+            // Her oyun için ayrılan request limitini (tarama sayısını) kontrol ediyoruz
+            while (requestsForThisGame < requestsPerGameLimit && failureStreak < 200 && globalRequests < MAX_DAILY_REQUESTS) {
                 if (currentId > nexusMaxId) {
-                    currentId = Math.floor(Math.random() * (nexusMaxId * 0.5)); // Eskilere git
+                    currentId = Math.floor(Math.random() * (nexusMaxId * 0.5));
                 }
 
-                // API İsteği atmadan önce DB'de var mı kontrol et (Daha önce çekilmiş olabilir)
+                // Daha önce eklenmiş mi kontrolü
                 const alreadyHave = await Mod.exists({ domain_name: game, mod_id: currentId });
                 if (alreadyHave) {
                     currentId++;
@@ -107,12 +99,11 @@ async function crawlMods() {
                     const modUrl = `https://api.nexusmods.com/v1/games/${game}/mods/${currentId}.json`;
                     const res = await axios.get(modUrl, { headers: HEADERS });
                     globalRequests++;
+                    requestsForThisGame++;
+                    
                     const modData = res.data;
-
-                    // Geçerli bir mod mu? (Gizli/Silinmiş değilse)
                     if (modData.name && modData.status !== 'hidden' && modData.status !== 'not_published') {
                         modData.domain_name = game;
-                        // Storage optimizasyonu: Açıklamayı kısalt
                         if (modData.description && modData.description.length > 500) {
                             modData.description = modData.description.substring(0, 500);
                         }
@@ -128,19 +119,20 @@ async function crawlMods() {
                     }
                 } catch (err) {
                     globalRequests++;
+                    requestsForThisGame++;
                     if (err.response && err.response.status === 429) {
                         console.error("⛔ [KRİTİK] 429 Limit Hatası! Robot duruyor.");
                         return totalInserted;
                     }
                     if (err.response && (err.response.status === 404 || err.response.status === 403)) {
-                        failureStreak++; // Bulunamayan veya Premium modlar
+                        failureStreak++;
                     }
                 }
 
                 currentId++;
-                await sleep(350); // Nexus API ban koruması
+                await sleep(350); 
             }
-            console.log(` ✅ [${game}] bitti. Eklenen: ${addedForGame}, Toplam global istek: ${globalRequests}`);
+            console.log(` ✅ [${game}] bitti. Tarama: ${requestsForThisGame}, Eklenen: ${addedForGame}, Toplam global: ${globalRequests}`);
 
         } catch (gameErr) {
             console.warn(` [${game}] işlenirken hata oluştu:`, gameErr.message);
