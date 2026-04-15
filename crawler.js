@@ -75,11 +75,15 @@ async function crawlMods() {
             let addedForGame = 0;
             let failureStreak = 0;
 
+            let scanDirection = 1;
+
             if (dbMaxId >= nexusMaxId) {
-                console.log(` ! Oyun zaten en güncel ID'ye ulaşmış. Tarihsel boşluk doldurma (Gap-Filling) aktif.`);
+                console.log(` ! Oyun zaten en güncel ID'ye ulaşmış. Geriye dönük tarama (Backward Scan) aktif.`);
                 currentId = Math.floor(Math.random() * nexusMaxId);
+                scanDirection = -1;
             } else {
                 currentId = dbMaxId + 1;
+                scanDirection = 1;
             }
 
             // Her oyun için ayrılan request limitini (tarama sayısını) kontrol ediyoruz
@@ -87,11 +91,15 @@ async function crawlMods() {
                 if (currentId > nexusMaxId) {
                     currentId = Math.floor(Math.random() * (nexusMaxId * 0.5));
                 }
+                if (currentId <= 0) {
+                    currentId = Math.floor(Math.random() * nexusMaxId);
+                }
 
                 // Daha önce eklenmiş mi kontrolü
                 const alreadyHave = await Mod.exists({ domain_name: game, mod_id: currentId });
                 if (alreadyHave) {
-                    currentId++;
+                    currentId += scanDirection;
+                    failureStreak = 0; // Veritabanında mod bulunduğunda streak'i sıfırla ki boşuna durmasın
                     continue;
                 }
 
@@ -129,7 +137,7 @@ async function crawlMods() {
                     }
                 }
 
-                currentId++;
+                currentId += scanDirection;
                 await sleep(350); 
             }
             console.log(` ✅ [${game}] bitti. Tarama: ${requestsForThisGame}, Eklenen: ${addedForGame}, Toplam global: ${globalRequests}`);
