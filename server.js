@@ -80,7 +80,8 @@ app.use(cors());
 app.use(express.json());
 
 // Ön yüz dosyalarını (HTML, CSS, JS vb.) sunucudan servis et (Cloud dağıtımı için gerekli)
-app.use(express.static(__dirname));
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'frontend/public')));
 
 // MongoDB Database Bağlantısı
 const MONGO_URI = process.env.MONGO_URI;
