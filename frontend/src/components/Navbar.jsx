@@ -17,14 +17,9 @@ function Navbar() {
   const location = useLocation();
 
   const selectedGameObject = games.find(g => g.id === selectedGame) || games[0];
-  const [gameSearch, setGameSearch] = useState(selectedGameObject.name);
+  const [gameSearch, setGameSearch] = useState('');
 
-  // Eğer dışarıdan selectedGame değişirse inputu da güncelle
-  React.useEffect(() => {
-    setGameSearch(selectedGameObject.name);
-  }, [selectedGameObject.name]);
-
-  const filteredGames = gameSearch.trim() === '' || gameSearch === selectedGameObject.name
+  const filteredGames = gameSearch.trim() === ''
     ? games
     : games.filter(g => g.name.toLowerCase().includes(gameSearch.toLowerCase()));
 
@@ -60,16 +55,7 @@ function Navbar() {
                   setIsGameMenuOpen(true);
                 }}
                 onFocus={() => {
-                  setGameSearch('');
                   setIsGameMenuOpen(true);
-                }}
-                onBlur={() => {
-                  // Eğer boş bırakıldıysa seçili oyunu geri yaz
-                  setTimeout(() => {
-                    if (!gameSearch.trim()) {
-                      setGameSearch(selectedGameObject.name);
-                    }
-                  }, 200);
                 }}
                 className="game-search-input"
               />
@@ -89,7 +75,7 @@ function Navbar() {
                       className={`game-item ${selectedGame === game.id ? 'active' : ''}`}
                       onClick={() => {
                         setSelectedGame(game.id);
-                        setGameSearch(game.name);
+                        setGameSearch('');
                         setIsGameMenuOpen(false);
                       }}
                     >

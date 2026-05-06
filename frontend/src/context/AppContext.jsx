@@ -6,7 +6,7 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [favorites, setFavorites] = useState([]);
-  const [selectedGame, setSelectedGame] = useState('skyrimspecialedition');
+  const [selectedGame, setSelectedGame] = useState('all');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
