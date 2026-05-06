@@ -17,6 +17,16 @@ function Navbar() {
   const location = useLocation();
 
   const selectedGameObject = games.find(g => g.id === selectedGame) || games[0];
+  const [gameSearch, setGameSearch] = useState(selectedGameObject.name);
+
+  // Eğer dışarıdan selectedGame değişirse inputu da güncelle
+  React.useEffect(() => {
+    setGameSearch(selectedGameObject.name);
+  }, [selectedGameObject.name]);
+
+  const filteredGames = gameSearch.trim() === '' || gameSearch === selectedGameObject.name
+    ? games
+    : games.filter(g => g.name.toLowerCase().includes(gameSearch.toLowerCase()));
 
   return (
     <nav className="premium-navbar">
@@ -41,7 +51,28 @@ function Navbar() {
           >
             <div className="game-selector-trigger">
               <Gamepad2 size={18} className="game-icon" />
-              <span className="selected-game-name">{selectedGameObject.name}</span>
+              <input 
+                type="text"
+                placeholder="Oyunlar..."
+                value={gameSearch}
+                onChange={(e) => {
+                  setGameSearch(e.target.value);
+                  setIsGameMenuOpen(true);
+                }}
+                onFocus={() => {
+                  setGameSearch('');
+                  setIsGameMenuOpen(true);
+                }}
+                onBlur={() => {
+                  // Eğer boş bırakıldıysa seçili oyunu geri yaz
+                  setTimeout(() => {
+                    if (!gameSearch.trim()) {
+                      setGameSearch(selectedGameObject.name);
+                    }
+                  }, 200);
+                }}
+                className="game-search-input"
+              />
               <ChevronDown size={16} className={`chevron-icon ${isGameMenuOpen ? 'open' : ''}`} />
             </div>
 
@@ -51,19 +82,26 @@ function Navbar() {
                 <span>Popüler Oyunlar</span>
               </div>
               <ul className="game-list">
-                {games.map(game => (
-                  <li 
-                    key={game.id} 
-                    className={`game-item ${selectedGame === game.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedGame(game.id);
-                      setIsGameMenuOpen(false);
-                    }}
-                  >
-                    <div className={`game-color-dot bg-gradient-to-r ${game.color}`}></div>
-                    <span>{game.name}</span>
+                {filteredGames.length > 0 ? (
+                  filteredGames.map(game => (
+                    <li 
+                      key={game.id} 
+                      className={`game-item ${selectedGame === game.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedGame(game.id);
+                        setGameSearch(game.name);
+                        setIsGameMenuOpen(false);
+                      }}
+                    >
+                      <div className={`game-color-dot bg-gradient-to-r ${game.color}`}></div>
+                      <span>{game.name}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="game-item" style={{ pointerEvents: 'none', color: '#94a3b8' }}>
+                    Sonuç bulunamadı.
                   </li>
-                ))}
+                )}
               </ul>
               <div className="dropdown-footer">
                 <Search size={14} />

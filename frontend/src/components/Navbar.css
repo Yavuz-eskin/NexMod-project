@@ -90,9 +90,20 @@
   color: #8b5cf6;
 }
 
-.selected-game-name {
+.game-search-input {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-family: inherit;
   font-weight: 500;
   font-size: 0.95rem;
+  width: 170px;
+  outline: none;
+}
+
+.game-search-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .chevron-icon {
