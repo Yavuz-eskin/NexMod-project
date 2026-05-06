@@ -5,10 +5,15 @@ import { AppContext } from '../context/AppContext';
 import './Navbar.css';
 
 const games = [
+  { id: 'all', name: 'Hiçbiri (Karışık)', color: 'from-gray-400 to-gray-600' },
   { id: 'skyrimspecialedition', name: 'Skyrim Special Edition', color: 'from-blue-500 to-cyan-400' },
   { id: 'fallout4', name: 'Fallout 4', color: 'from-green-500 to-emerald-400' },
-  { id: 'witcher3', name: 'The Witcher 3', color: 'from-red-500 to-orange-400' },
-  { id: 'all', name: 'Hiçbiri (Karışık)', color: 'from-yellow-400 to-yellow-600' }
+  { id: 'falloutnewvegas', name: 'Fallout: New Vegas', color: 'from-amber-500 to-yellow-600' },
+  { id: 'oblivion', name: 'Oblivion', color: 'from-orange-500 to-amber-400' },
+  { id: 'baldursgate3', name: 'Baldur\'s Gate 3', color: 'from-purple-500 to-fuchsia-600' },
+  { id: 'cyberpunk2077', name: 'Cyberpunk 2077', color: 'from-yellow-300 to-yellow-500' },
+  { id: 'stardewvalley', name: 'Stardew Valley', color: 'from-green-400 to-lime-500' },
+  { id: 'witcher3', name: 'The Witcher 3', color: 'from-red-500 to-orange-400' }
 ];
 
 function Navbar() {
