@@ -79,9 +79,9 @@ app.use(cors());
 // Gelen JSON verilerini okuyabilmek için
 app.use(express.json());
 
-// Ön yüz dosyalarını (HTML, CSS, JS vb.) sunucudan servis et (Cloud dağıtımı için gerekli)
+// Ön yüz dosyalarını (React derlenmiş dosyaları) sunucudan servis et
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'frontend/public')));
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
 
 // MongoDB Database Bağlantısı
 const MONGO_URI = process.env.MONGO_URI;
@@ -421,6 +421,11 @@ app.post('/api/user/update-profile', authenticateToken, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Profil güncellenemedi.' });
     }
+});
+
+// React Router için tüm bilinmeyen yolları index.html'e yönlendir (Catch-all)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
 });
 
 app.listen(PORT, () => {
