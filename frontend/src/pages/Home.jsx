@@ -153,6 +153,16 @@ function Home({ isTopMods = false, isFavorites = false }) {
                   <div className="mod-card-content">
                     <h3 className="mod-card-title" title={mod.name}>{mod.name}</h3>
                     <p className="mod-card-description">{mod.summary || 'Açıklama bulunmuyor.'}</p>
+                    <div className="mod-card-footer" style={{ marginTop: 'auto', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                      <a 
+                        href={`https://www.nexusmods.com/${mod.domain_name || 'skyrimspecialedition'}/mods/${mod.mod_id}`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mod-card-link-btn"
+                      >
+                        Nexus'ta Gör
+                      </a>
+                    </div>
                   </div>
                 </div>
               );

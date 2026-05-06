@@ -225,6 +225,7 @@
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -244,6 +245,24 @@
   gap: 0.4rem;
   color: #cbd5e1;
   font-size: 0.9rem;
+}
+
+.mod-card-link-btn {
+  background: rgba(139, 92, 246, 0.1);
+  color: #a855f7;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.mod-card-link-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 @keyframes pulse {
