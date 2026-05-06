@@ -105,8 +105,13 @@ function Navbar() {
               <Link to="/top-mods" className={`nav-link ${location.pathname === '/top-mods' ? 'active' : ''}`}>Çok Sevilenler</Link>
             </li>
             <li>
-              <Link to="/favorites" className={`nav-link ${location.pathname === '/favorites' ? 'active' : ''}`} style={location.pathname === '/favorites' ? { color: '#ef4444' } : {}}>
+              <Link to="/favorites" className={`nav-link ${location.pathname === '/favorites' ? 'active' : ''}`} style={{ ...(location.pathname === '/favorites' ? { color: '#ef4444' } : {}), display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Heart size={16} color={location.pathname === '/favorites' ? '#ef4444' : 'currentColor'} /> Favorilerim
+                {favorites.length > 0 && (
+                  <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                    {favorites.length}
+                  </span>
+                )}
               </Link>
             </li>
             {user && (
@@ -119,13 +124,8 @@ function Navbar() {
           </ul>
         </div>
 
-        {/* Right Section (Profile & Favorites) */}
+        {/* Right Section (Profile) */}
         <div className="nav-right">
-          <Link to="/favorites" className="icon-btn favorites-btn">
-            <Heart size={20} />
-            {favorites.length > 0 && <span className="badge">{favorites.length}</span>}
-          </Link>
-          
           {user ? (
             <div className="user-profile" style={{ position: 'relative', group: 'hover' }} onClick={logout} title="Çıkış Yap">
               <div className="avatar">
