@@ -1,22 +1,29 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Navbar from './components/Navbar';
+import AuthModal from './components/AuthModal';
 import './App.css';
 
 function App() {
   return (
-    <Router>
-      <div className="app-container">
-        <Navbar />
+    <AppProvider>
+      <Router>
+        <div className="app-container">
+          <Navbar />
+          <AuthModal />
 
-        {/* Routing */}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-      </div>
-    </Router>
+          {/* Routing */}
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/top-mods" element={<Home isTopMods={true} />} />
+            <Route path="/favorites" element={<Home isFavorites={true} />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </div>
+      </Router>
+    </AppProvider>
   );
 }
 

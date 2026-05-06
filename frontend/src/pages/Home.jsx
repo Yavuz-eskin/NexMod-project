@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Sparkles, Heart } from 'lucide-react';
+import { AppContext } from '../context/AppContext';
 import './Home.css';
 
-function Home() {
+function Home({ isTopMods = false, isFavorites = false }) {
+  const { favorites, toggleFavorite, selectedGame } = useContext(AppContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +13,17 @@ function Home() {
     const fetchInitialMods = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/search?q=&game=skyrimspecialedition');
+        if (isFavorites) {
+          setMods(favorites);
+          setLoading(false);
+          return;
+        }
+
+        const endpoint = isTopMods 
+          ? `/api/top-mods?game=${selectedGame.id || 'skyrimspecialedition'}` 
+          : `/api/search?q=&game=${selectedGame.id || 'skyrimspecialedition'}`;
+          
+        const response = await fetch(endpoint);
         if (response.ok) {
           const data = await response.json();
           setMods(data.mods && data.mods.length > 0 ? data.mods : getMockMods());
@@ -27,15 +39,15 @@ function Home() {
     };
 
     fetchInitialMods();
-  }, []);
+  }, [isTopMods, isFavorites, selectedGame, favorites.length]); // Add favorites.length so it updates if we remove fav in fav view
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || isFavorites) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&game=skyrimspecialedition`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&game=${selectedGame.id || 'skyrimspecialedition'}`);
       if (response.ok) {
         const data = await response.json();
         setMods(data.mods || []);
@@ -58,42 +70,52 @@ function Home() {
     { mod_id: 4, name: "Immersive Armors", author: "Hothtrooper44", summary: "Immersive Armors seeks to drastically enhance the variety of armors in the world of Skyrim in a lore...", picture_url: "https://via.placeholder.com/400x200/1e293b/f87171?text=Immersive+Armors" }
   ];
 
+  const getPageTitle = () => {
+    if (isFavorites) return { icon: <Heart className="icon" size={28} color="#ef4444" />, title: ' Favori Modlarım', subtitle: 'Kaydettiğiniz tüm favori modlarınız.' };
+    if (isTopMods) return { icon: <Heart className="icon" size={28} />, title: ' En Çok Sevilen Modlar', subtitle: 'Topluluğun en çok indirdiği ve beğendiği modlar.' };
+    return { icon: <Sparkles className="icon" size={28} />, title: ' Yapay Zeka Arama Sonuçları', subtitle: 'Veritabanımızda 1000 mod taranarak en iyi sonuçlar listelendi.' };
+  };
+
+  const pageInfo = getPageTitle();
+
   return (
     <div className="home-container">
-      <section className="hero-section">
-        <div className="hero-content">
-          <form className="search-box-wrapper" onSubmit={handleSearch}>
-            <Sparkles className="ai-icon" size={24} />
-            <input 
-              type="text" 
-              className="search-input"
-              placeholder="Örn: FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button type="submit" className="search-btn">
-              Akıllı Ara
-            </button>
-          </form>
-          
-          <div className="search-suggestions">
-            <span className="suggestion-pill" onClick={() => handleSuggestionClick('RPG Savaş Yenilikleri')}>
-              RPG Savaş Yenilikleri
-            </span>
-            <span className="suggestion-pill" onClick={() => handleSuggestionClick('Sistemi Yormayan Grafikler')}>
-              Sistemi Yormayan Grafikler
-            </span>
-            <span className="suggestion-pill" onClick={() => handleSuggestionClick('Gerçekçi Hava Durumu')}>
-              Gerçekçi Hava Durumu
-            </span>
+      {!isTopMods && !isFavorites && (
+        <section className="hero-section">
+          <div className="hero-content">
+            <form className="search-box-wrapper" onSubmit={handleSearch}>
+              <Sparkles className="ai-icon" size={24} />
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Örn: FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="search-btn">
+                Akıllı Ara
+              </button>
+            </form>
+            
+            <div className="search-suggestions">
+              <span className="suggestion-pill" onClick={() => handleSuggestionClick('RPG Savaş Yenilikleri')}>
+                RPG Savaş Yenilikleri
+              </span>
+              <span className="suggestion-pill" onClick={() => handleSuggestionClick('Sistemi Yormayan Grafikler')}>
+                Sistemi Yormayan Grafikler
+              </span>
+              <span className="suggestion-pill" onClick={() => handleSuggestionClick('Gerçekçi Hava Durumu')}>
+                Gerçekçi Hava Durumu
+              </span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="recommendations-section">
+      <section className="recommendations-section" style={{ paddingTop: (isTopMods || isFavorites) ? '4rem' : '2rem' }}>
         <div className="section-header">
-          <h2><Sparkles className="icon" size={28} /> Yapay Zeka Arama Sonuçları</h2>
-          <p>Veritabanımızda 1000 mod taranarak en iyi sonuçlar listelendi.</p>
+          <h2>{pageInfo.icon}{pageInfo.title}</h2>
+          <p>{pageInfo.subtitle}</p>
         </div>
 
         {loading ? (
@@ -101,29 +123,40 @@ function Home() {
             <Sparkles size={40} className="ai-icon" />
             <p style={{ marginTop: '1rem' }}>Yapay zeka modları analiz ediyor...</p>
           </div>
+        ) : mods.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+            <p>Burada henüz bir şey yok.</p>
+          </div>
         ) : (
           <div className="mod-grid">
-            {mods.map((mod) => (
-              <div key={mod.mod_id} className="mod-card">
-                <div className="mod-card-image-wrapper">
-                  <img src={mod.picture_url || `https://via.placeholder.com/400x200/1e293b/a78bfa?text=${mod.name}`} alt={mod.name} className="mod-card-image" />
-                  <div className="mod-card-image-overlay"></div>
-                  
-                  <button className="mod-fav-btn">
-                    <Heart size={18} />
-                  </button>
-                  
-                  <div className="ai-match-badge">
-                    %89 AI Eşleşmesi
+            {mods.map((mod) => {
+              const isFav = favorites.some(f => f.mod_id === mod.mod_id);
+              return (
+                <div key={mod.mod_id} className="mod-card">
+                  <div className="mod-card-image-wrapper">
+                    <img src={mod.picture_url || `https://via.placeholder.com/400x200/1e293b/a78bfa?text=${mod.name.replace(/ /g, '+')}`} alt={mod.name} className="mod-card-image" />
+                    <div className="mod-card-image-overlay"></div>
+                    
+                    <button 
+                      className="mod-fav-btn" 
+                      onClick={() => toggleFavorite(mod)}
+                      style={isFav ? { color: '#ef4444', background: 'rgba(0,0,0,0.7)' } : {}}
+                    >
+                      <Heart size={18} fill={isFav ? '#ef4444' : 'none'} />
+                    </button>
+                    
+                    <div className="ai-match-badge">
+                      %89 AI Eşleşmesi
+                    </div>
+                  </div>
+
+                  <div className="mod-card-content">
+                    <h3 className="mod-card-title" title={mod.name}>{mod.name}</h3>
+                    <p className="mod-card-description">{mod.summary || 'Açıklama bulunmuyor.'}</p>
                   </div>
                 </div>
-
-                <div className="mod-card-content">
-                  <h3 className="mod-card-title" title={mod.name}>{mod.name}</h3>
-                  <p className="mod-card-description">{mod.summary || 'Açıklama bulunmuyor.'}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
