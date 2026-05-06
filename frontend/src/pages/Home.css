@@ -1,0 +1,299 @@
+.home-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #12131c; /* Çok koyu arka plan */
+  color: #e2e8f0;
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Arama Alanı (Hero) */
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem 3rem;
+}
+
+.hero-content {
+  width: 100%;
+  max-width: 850px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Koyu, Geniş Arama Kutusu */
+.search-box-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #1a1b26; /* Koyu Gri/Mavi */
+  border: 1px solid #2a2d3e;
+  border-radius: 99px;
+  padding: 0.4rem 0.4rem 0.4rem 1.5rem;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+}
+
+.search-box-wrapper:focus-within {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.3), 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.ai-icon {
+  color: #a78bfa;
+  margin-right: 0.8rem;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 1.05rem;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+
+.search-input::placeholder {
+  color: #64748b;
+  font-weight: 300;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 0.9rem 2.5rem;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.search-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.5);
+}
+
+/* Öneriler (Hap Butonlar) */
+.search-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.suggestion-pill {
+  background: #1a1b26;
+  border: 1px solid #2a2d3e;
+  color: #94a3b8;
+  padding: 0.6rem 1.2rem;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.suggestion-pill::before {
+  content: '•';
+  color: #a855f7;
+  font-size: 1.2rem;
+  line-height: 0;
+}
+
+.suggestion-pill:hover {
+  border-color: #4c1d95;
+  color: #e2e8f0;
+}
+
+/* Tavsiyeler & Sonuçlar Bölümü */
+.recommendations-section {
+  padding: 2rem 3rem 6rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.section-header {
+  margin-bottom: 2.5rem;
+  text-align: left;
+}
+
+.section-header h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-header h2 .icon {
+  color: #a855f7;
+}
+
+.section-header p {
+  color: #94a3b8;
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+/* Kart Grid Sistemi */
+.mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Kart Tasarımı */
+.mod-card {
+  background: #1a1b26;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+.mod-card:hover {
+  transform: translateY(-5px);
+  border-color: #2a2d3e;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+}
+
+.mod-card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+
+.mod-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mod-card-image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, transparent 50%, #1a1b26 100%);
+}
+
+/* Kalp Butonu */
+.mod-fav-btn {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 2;
+}
+
+.mod-fav-btn:hover {
+  color: #ef4444;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* AI Eşleşme Rozeti */
+.ai-match-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(16, 185, 129, 0.2);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  padding: 0.3rem 0.8rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  z-index: 2;
+}
+
+.ai-match-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background-color: #34d399;
+  border-radius: 50%;
+}
+
+/* Kart İçeriği */
+.mod-card-content {
+  padding: 1.2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mod-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mod-card-description {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 3rem 1rem 2rem;
+  }
+  .recommendations-section {
+    padding: 2rem 1rem 4rem;
+  }
+  .search-box-wrapper {
+    flex-direction: column;
+    border-radius: 20px;
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .search-btn {
+    width: 100%;
+    border-radius: 12px;
+  }
+}

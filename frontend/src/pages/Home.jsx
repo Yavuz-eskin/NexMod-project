@@ -1,16 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Heart } from 'lucide-react';
+import './Home.css';
 
 function Home() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mods, setMods] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInitialMods = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/search?q=&game=skyrimspecialedition');
+        if (response.ok) {
+          const data = await response.json();
+          setMods(data.mods && data.mods.length > 0 ? data.mods : getMockMods());
+        } else {
+          setMods(getMockMods());
+        }
+      } catch (error) {
+        console.error("Modlar yüklenemedi:", error);
+        setMods(getMockMods());
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialMods();
+  }, []);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&game=skyrimspecialedition`);
+      if (response.ok) {
+        const data = await response.json();
+        setMods(data.mods || []);
+      }
+    } catch (error) {
+      console.error("Arama hatası:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion);
+  };
+
+  const getMockMods = () => [
+    { mod_id: 1, name: "NPC Map Locations", author: "Bilinmiyor", summary: "See NPC and players on the map, with an optional minimap....", picture_url: "https://via.placeholder.com/400x200/1e293b/34d399?text=Map+Locations" },
+    { mod_id: 2, name: "Skyrim Script Extender (SKSE64)", author: "SKSE Team", summary: "The Skyrim Script Extender (SKSE) is a tool used by many Skyrim mods that...", picture_url: "https://via.placeholder.com/400x200/1e293b/8b5cf6?text=SKSE" },
+    { mod_id: 3, name: "FSMP - Faster HDT-SMP", author: "Bilinmiyor", summary: "Faster physics for capes, clothes, hair, etc!...", picture_url: "https://via.placeholder.com/400x200/1e293b/60a5fa?text=FSMP" },
+    { mod_id: 4, name: "Immersive Armors", author: "Hothtrooper44", summary: "Immersive Armors seeks to drastically enhance the variety of armors in the world of Skyrim in a lore...", picture_url: "https://via.placeholder.com/400x200/1e293b/f87171?text=Immersive+Armors" }
+  ];
+
   return (
     <div className="home-container">
-      <section className="hero">
-        <div className="search-container">
-          <div className="search-box">
-            {/* We will port the exact HTML/CSS from index.html here */}
-            <h1>Yapay Zeka Destekli Mod Platformu</h1>
-            <p>Eski index.html buraya taşınacak...</p>
+      <section className="hero-section">
+        <div className="hero-content">
+          <form className="search-box-wrapper" onSubmit={handleSearch}>
+            <Sparkles className="ai-icon" size={24} />
+            <input 
+              type="text" 
+              className="search-input"
+              placeholder="Örn: FPS düşürmeden grafikleri çok daha gerçekçi yapan modlar..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button type="submit" className="search-btn">
+              Akıllı Ara
+            </button>
+          </form>
+          
+          <div className="search-suggestions">
+            <span className="suggestion-pill" onClick={() => handleSuggestionClick('RPG Savaş Yenilikleri')}>
+              RPG Savaş Yenilikleri
+            </span>
+            <span className="suggestion-pill" onClick={() => handleSuggestionClick('Sistemi Yormayan Grafikler')}>
+              Sistemi Yormayan Grafikler
+            </span>
+            <span className="suggestion-pill" onClick={() => handleSuggestionClick('Gerçekçi Hava Durumu')}>
+              Gerçekçi Hava Durumu
+            </span>
           </div>
         </div>
+      </section>
+
+      <section className="recommendations-section">
+        <div className="section-header">
+          <h2><Sparkles className="icon" size={28} /> Yapay Zeka Arama Sonuçları</h2>
+          <p>Veritabanımızda 1000 mod taranarak en iyi sonuçlar listelendi.</p>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#8b5cf6' }}>
+            <Sparkles size={40} className="ai-icon" />
+            <p style={{ marginTop: '1rem' }}>Yapay zeka modları analiz ediyor...</p>
+          </div>
+        ) : (
+          <div className="mod-grid">
+            {mods.map((mod) => (
+              <div key={mod.mod_id} className="mod-card">
+                <div className="mod-card-image-wrapper">
+                  <img src={mod.picture_url || `https://via.placeholder.com/400x200/1e293b/a78bfa?text=${mod.name}`} alt={mod.name} className="mod-card-image" />
+                  <div className="mod-card-image-overlay"></div>
+                  
+                  <button className="mod-fav-btn">
+                    <Heart size={18} />
+                  </button>
+                  
+                  <div className="ai-match-badge">
+                    %89 AI Eşleşmesi
+                  </div>
+                </div>
+
+                <div className="mod-card-content">
+                  <h3 className="mod-card-title" title={mod.name}>{mod.name}</h3>
+                  <p className="mod-card-description">{mod.summary || 'Açıklama bulunmuyor.'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
