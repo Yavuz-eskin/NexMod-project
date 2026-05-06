@@ -89,10 +89,6 @@ function Navbar() {
                   </li>
                 )}
               </ul>
-              <div className="dropdown-footer">
-                <Search size={14} />
-                <span>Tüm oyunlarda ara...</span>
-              </div>
             </div>
           </div>
 

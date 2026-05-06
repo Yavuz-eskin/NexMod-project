@@ -19,9 +19,10 @@ function Home({ isTopMods = false, isFavorites = false }) {
           return;
         }
 
+        const gameParam = selectedGame === 'all' ? '' : selectedGame;
         const endpoint = isTopMods 
-          ? `/api/top-mods?game=${selectedGame.id || 'skyrimspecialedition'}` 
-          : `/api/search?q=&game=${selectedGame.id || 'skyrimspecialedition'}`;
+          ? `/api/top-mods?game=${gameParam}` 
+          : `/api/search?q=&game=${gameParam}`;
           
         const response = await fetch(endpoint);
         if (response.ok) {
@@ -47,7 +48,8 @@ function Home({ isTopMods = false, isFavorites = false }) {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&game=${selectedGame.id || 'skyrimspecialedition'}`);
+      const gameParam = selectedGame === 'all' ? '' : selectedGame;
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&game=${gameParam}`);
       if (response.ok) {
         const data = await response.json();
         setMods(data.mods || []);
