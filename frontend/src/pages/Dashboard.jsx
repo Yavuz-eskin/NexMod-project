@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, Users, Settings, Database } from 'lucide-react';
 import './Dashboard.css';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('istatistikler');
+
+  useEffect(() => {
+    // Sayfa render olduğunda body arka plan rengini dashboard'un koyu mavisine eşitle
+    const originalBodyBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#0f172a';
+    
+    // Bileşenden çıkıldığında orijinal haline geri çevir
+    return () => {
+      document.body.style.backgroundColor = originalBodyBg;
+    };
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
