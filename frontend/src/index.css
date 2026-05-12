@@ -50,13 +50,14 @@
   }
 }
 
-body {
+body, html {
   margin: 0;
+  height: 100%;
 }
 
 #root {
   width: 100%;
-  min-height: 100svh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
