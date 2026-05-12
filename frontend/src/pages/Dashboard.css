@@ -1,6 +1,6 @@
 .dashboard-layout {
   display: flex;
-  min-height: 100vh;
+  flex: 1;
   background-color: #0f172a;
   color: #f8fafc;
   font-family: 'Outfit', sans-serif;
