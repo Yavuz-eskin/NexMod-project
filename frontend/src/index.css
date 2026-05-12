@@ -109,4 +109,5 @@ code {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #0f172a;
 }
