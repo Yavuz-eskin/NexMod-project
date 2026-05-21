@@ -195,7 +195,7 @@ function trackSearch() {
 }
 
 // İstatistikler Endpointi - Gerçek zamanlı MongoDB verileri
-app.get('/api/stats', authenticateToken, async (req, res) => {
+app.get('/api/stats', async (req, res) => {
     try {
         const [totalUsers, totalMods] = await Promise.all([
             User.countDocuments(),

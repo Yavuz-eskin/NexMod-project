@@ -15,9 +15,7 @@ function Dashboard() {
     setStatsLoading(true);
     setStatsError(null);
     try {
-      const res = await fetch('/api/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('/api/stats');
       if (!res.ok) throw new Error('Veriler alınamadı');
       const data = await res.json();
       setStats(data);
