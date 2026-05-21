@@ -106,6 +106,7 @@ if (MONGO_URI) {
 
 // /api/search adresine gelen istekleri Nexus API'sine yönlendir
 app.get('/api/search', async (req, res) => {
+    trackSearch(); // Günlük arama sayacını artır
     const query = req.query.q;
     const gameDomain = req.query.game || 'skyrimspecialedition'; // Varsayılan oyun: Skyrim SE
 
@@ -177,6 +178,37 @@ app.get('/api/search', async (req, res) => {
         console.error("❌ Arama Hatası Detayı:");
         console.error(error);
         res.status(500).json({ error: 'Veritabanı araması sırasında sunucu hatası oluştu.', message: error.message });
+    }
+});
+
+// Bugün yapılan arama sayısını hafızada tut (sunucu yeniden başlayana kadar)
+let dailySearchCount = 0;
+let lastResetDate = new Date().toDateString();
+
+function trackSearch() {
+    const today = new Date().toDateString();
+    if (today !== lastResetDate) {
+        dailySearchCount = 0;
+        lastResetDate = today;
+    }
+    dailySearchCount++;
+}
+
+// İstatistikler Endpointi - Gerçek zamanlı MongoDB verileri
+app.get('/api/stats', authenticateToken, async (req, res) => {
+    try {
+        const [totalUsers, totalMods] = await Promise.all([
+            User.countDocuments(),
+            Mod.countDocuments()
+        ]);
+        res.json({
+            totalUsers,
+            totalMods,
+            dailySearches: dailySearchCount
+        });
+    } catch (error) {
+        console.error('İstatistik hatası:', error.message);
+        res.status(500).json({ error: 'İstatistikler alınamadı.' });
     }
 });
 
