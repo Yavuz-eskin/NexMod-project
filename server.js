@@ -16,6 +16,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
 
+// Token Doğrulama Middleware'i
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+    if (!token) return res.status(401).json({ error: 'Yetkisiz erişim.' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Geçersiz veya süresi dolmuş token.' });
+        req.user = user;
+        next();
+    });
+};
+
 // Gemini AI Yapılandırması (Eğer anahtar varsa hazır beklesin)
 let genAI, model;
 if (process.env.GEMINI_API_KEY) {
@@ -470,20 +483,6 @@ app.post('/api/auth/login', async (req, res) => {
         res.status(500).json({ error: 'Giriş yapılırken sunucu hatası.' });
     }
 });
-
-// Token Doğrulama Middleware'i
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
-    if (!token) return res.status(401).json({ error: 'Yetkisiz erişim.' });
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ error: 'Geçersiz veya süresi dolmuş token.' });
-        req.user = user;
-        next();
-    });
-};
-
 // Favorileri Çekme
 app.get('/api/user/favorites', authenticateToken, async (req, res) => {
     try {
