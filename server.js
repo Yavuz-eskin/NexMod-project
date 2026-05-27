@@ -197,14 +197,16 @@ function trackSearch() {
 // İstatistikler Endpointi - Gerçek zamanlı MongoDB verileri
 app.get('/api/stats', async (req, res) => {
     try {
-        const [totalUsers, totalMods] = await Promise.all([
+        const [totalUsers, totalMods, recentMods] = await Promise.all([
             User.countDocuments(),
-            Mod.countDocuments()
+            Mod.countDocuments(),
+            Mod.find().sort({ _id: -1 }).limit(10).lean()
         ]);
         res.json({
             totalUsers,
             totalMods,
-            dailySearches: dailySearchCount
+            dailySearches: dailySearchCount,
+            recentMods
         });
     } catch (error) {
         console.error('İstatistik hatası:', error.message);

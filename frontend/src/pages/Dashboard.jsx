@@ -145,20 +145,40 @@ function Dashboard() {
             </div>
 
             <section className="recent-activity">
-              <h2>Son Aktiviteler</h2>
+              <h2>Son Aktiviteler (Son Eklenen 10 Mod)</h2>
               <div className="activity-list">
-                <div className="activity-item">
-                  <span className="time">Canlı</span>
-                  <p>Veritabanında <strong>{stats?.totalMods?.toLocaleString('tr-TR') ?? '...'}</strong> mod kayıtlı.</p>
-                </div>
-                <div className="activity-item">
-                  <span className="time">Bugün</span>
-                  <p>Toplam <strong>{stats?.dailySearches ?? '...'}</strong> arama yapıldı.</p>
-                </div>
-                <div className="activity-item">
-                  <span className="time">Toplam</span>
-                  <p><strong>{stats?.totalUsers?.toLocaleString('tr-TR') ?? '...'}</strong> kullanıcı sisteme kayıtlı.</p>
-                </div>
+                {stats?.recentMods && stats.recentMods.length > 0 ? (
+                  stats.recentMods.map((mod) => (
+                    <div key={mod._id} className="activity-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem' }}>
+                      {mod.picture_url ? (
+                        <img 
+                          src={mod.picture_url} 
+                          alt={mod.name} 
+                          style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} 
+                        />
+                      ) : (
+                        <div style={{ width: '40px', height: '40px', borderRadius: '6px', backgroundColor: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}>
+                          <Database size={16} />
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 500, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {mod.name}
+                        </p>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                          Oyun: {mod.domain_name} | Yazar: {mod.author || 'Bilinmiyor'}
+                        </span>
+                      </div>
+                      <span className="time" style={{ fontSize: '0.8rem', color: '#a78bfa', background: 'rgba(139,92,246,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                        Yeni Mod
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '1rem', color: '#64748b', textAlign: 'center' }}>
+                    Yükleniyor veya eklenen mod bulunamadı...
+                  </div>
+                )}
               </div>
             </section>
 
