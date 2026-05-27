@@ -126,7 +126,7 @@ function Navbar() {
               <Gamepad2 size={18} className="game-icon" />
               <input 
                 type="text"
-                placeholder="Oyunlar..."
+                placeholder={selectedGame && selectedGame !== 'all' ? selectedGameObject.name : 'Oyunlar...'}
                 value={gameSearch}
                 onChange={(e) => {
                   setGameSearch(e.target.value);
