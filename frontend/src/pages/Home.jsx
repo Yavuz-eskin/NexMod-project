@@ -9,11 +9,15 @@ function Home({ isTopMods = false, isFavorites = false }) {
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(12);
+  const [aiMetadata, setAiMetadata] = useState(null);
+  const [aiQuery, setAiQuery] = useState('');
 
   useEffect(() => {
     const fetchInitialMods = async () => {
       try {
         setLoading(true);
+        setAiMetadata(null);
+        setAiQuery('');
         if (isFavorites) {
           setMods(favorites);
           setLoading(false);
@@ -56,6 +60,8 @@ function Home({ isTopMods = false, isFavorites = false }) {
       if (response.ok) {
         const data = await response.json();
         setMods(data.mods || []);
+        setAiMetadata(data.aiMetadata || null);
+        setAiQuery(data.aiQuery || '');
         setVisibleCount(12); // Aramadan sonra da gösterim sayısını sıfırla
       }
     } catch (error) {
@@ -84,6 +90,22 @@ function Home({ isTopMods = false, isFavorites = false }) {
     if (isFavorites) return { icon: <Heart className="icon" size={28} color="#ef4444" />, title: ' Favori Modlarım', subtitle: 'Kaydettiğiniz tüm favori modlarınız.' };
     if (isTopMods) return { icon: <Heart className="icon" size={28} />, title: ' En Çok Sevilen Modlar', subtitle: 'Topluluğun en çok indirdiği ve beğendiği modlar.' };
     return { icon: <Sparkles className="icon" size={28} />, title: ' Yapay Zeka Arama Sonuçları', subtitle: 'Veritabanımızda taranan binlerce mod arasından en iyi sonuçlar listelendi.' };
+  };
+
+  const calculateMatchPercentage = (mod, queryText, aiKeywords) => {
+    const combinedText = `${mod.name} ${mod.summary || ''} ${mod.description || ''}`.toLowerCase();
+    const searchTerms = `${queryText} ${aiKeywords || ''}`.toLowerCase().split(/[\s,]+/).filter(t => t.length > 2);
+    if (searchTerms.length === 0) return 85;
+    let matchedCount = 0;
+    searchTerms.forEach(term => {
+      if (combinedText.includes(term)) {
+        matchedCount++;
+      }
+    });
+    if (matchedCount === 0) return 74;
+    const ratio = matchedCount / searchTerms.length;
+    const percentage = Math.round(75 + (ratio * 23));
+    return Math.min(percentage, 99);
   };
 
   const pageInfo = getPageTitle();
@@ -141,6 +163,73 @@ function Home({ isTopMods = false, isFavorites = false }) {
           </div>
         ) : (
           <>
+            {aiMetadata && (
+              <div className="ai-analiz-box" style={{
+                background: 'rgba(139, 92, 246, 0.03)',
+                border: '1px solid rgba(139, 92, 246, 0.15)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                marginBottom: '2rem',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-50px',
+                  right: '-50px',
+                  width: '150px',
+                  height: '150px',
+                  background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
+                  filter: 'blur(20px)',
+                  pointerEvents: 'none'
+                }}></div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+                    padding: '0.5rem',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 0 15px rgba(139, 92, 246, 0.3)'
+                  }}>
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c4b5fd', fontWeight: 600, display: 'block' }}>Yapay Zeka Analiz Yorumu</span>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f8fafc', fontWeight: 700 }}>{aiMetadata.detectedIntent || 'Akıllı Arama'}</h3>
+                  </div>
+                </div>
+
+                <p style={{ margin: 0, color: '#cbd5e1', lineHeight: 1.6, fontSize: '0.95rem' }}>
+                  {aiMetadata.aiResponse}
+                </p>
+
+                <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', marginRight: '4px' }}>Konsept Odakları:</span>
+                  {aiMetadata.detectedGame && aiMetadata.detectedGame !== 'all' && (
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '99px', fontWeight: 500 }}>
+                      🎮 {aiMetadata.detectedGame === 'skyrimspecialedition' ? 'Skyrim SE' : aiMetadata.detectedGame === 'fallout4' ? 'Fallout 4' : aiMetadata.detectedGame}
+                    </span>
+                  )}
+                  {aiMetadata.sortBy !== 'default' && (
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.15)', padding: '0.2rem 0.6rem', borderRadius: '99px', fontWeight: 500 }}>
+                      ⚡ {aiMetadata.sortBy === 'downloads' ? 'En Popülerler' : 'En Yeniler'}
+                    </span>
+                  )}
+                  {aiQuery && aiQuery.split(' ').slice(0, 8).map((kw, i) => (
+                    <span key={i} style={{ fontSize: '0.72rem', background: 'rgba(167, 139, 250, 0.08)', color: '#c4b5fd', border: '1px solid rgba(167, 139, 250, 0.12)', padding: '0.2rem 0.6rem', borderRadius: '99px' }}>
+                      #{kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mod-grid">
               {visibleMods.map((mod) => {
                 const isFav = favorites.some(f => f.mod_id === mod.mod_id);
@@ -159,7 +248,7 @@ function Home({ isTopMods = false, isFavorites = false }) {
                       </button>
                       
                       <div className="ai-match-badge">
-                        %89 AI Eşleşmesi
+                        %{calculateMatchPercentage(mod, searchQuery, aiQuery)} AI Eşleşmesi
                       </div>
                     </div>
 

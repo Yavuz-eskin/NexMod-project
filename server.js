@@ -48,29 +48,81 @@ async function translateQueryWithAI(userQuery) {
     // 1. Önce sözlükte var mı bak (Hızlı ve Kesin Sonuç)
     if (TURKISH_TO_ENGLISH_MAP[lowQuery]) {
         console.log(`📚 Sözlükten Bulundu: ${lowQuery} -> ${TURKISH_TO_ENGLISH_MAP[lowQuery]}`);
-        return TURKISH_TO_ENGLISH_MAP[lowQuery];
+        return {
+            detectedIntent: lowQuery.charAt(0).toUpperCase() + lowQuery.slice(1) + " Modları",
+            englishKeywords: TURKISH_TO_ENGLISH_MAP[lowQuery],
+            detectedGame: "all",
+            sortBy: "default",
+            aiResponse: `Arama teriminizi sözlükten hızlıca eşleştirdim: "${TURKISH_TO_ENGLISH_MAP[lowQuery]}". Sizin için en uygun modları listeliyorum!`
+        };
     }
 
     // 2. Sözlükte yoksa Gemini AI'yı dene
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "YOUR_GEMINI_API_KEY") {
         console.warn("⚠️ GEMINI_API_KEY eksik. AI çevirisi yapılamıyor. Lütfen .env dosyasını kontrol edin.");
-        return userQuery;
+        return {
+            detectedIntent: "Standart Arama",
+            englishKeywords: userQuery,
+            detectedGame: "all",
+            sortBy: "default",
+            aiResponse: "Yapay zeka modülü şu anda çevrimdışı. Standart anahtar kelime araması yapılıyor."
+        };
     }
 
     try {
-        const prompt = `Sen NexMod sitesinin zeki arama asistanısın. Kullanıcı Türkçe veya karışık bir dilde oyun modu arıyor. 
-        Görevin: Kullanıcının ne aramak istediğini anla ve bunu NexusMods veritabanında en iyi sonucu verecek profesyonel İngilizce mod terimlerine çevir.
-        Geniş kapsamlı düşün; mesela "kadın" aranıyorsa "female, woman, beauty, character" gibi ilgili terimleri de ekle.
-        Sadece İngilizce karşılıklarını (virgülle ayırarak veya boşlukla) döndür, açıklama yapma.
+        const prompt = `Sen NexMod sitesinin son derece zeki, konseptleri ve kullanıcı isteklerini anlayan yapay zeka arama asistanısın. 
+        Kullanıcı Türkçe veya karışık bir dilde oyun modu arıyor veya oynamak istediği atmosferi/oynanış şeklini anlatıyor.
         
+        Görevin:
+        1. Kullanıcının tüm cümlesini, amacını ve istediği modu kullanma hissini derinlemesine anla (Semantik Konsept Genişletme).
+        2. Sadece düz kelimeleri çevirme. Örneğin kullanıcı "gotik ve karanlık atmosfer" istiyorsa, bu etkiyi yaratacak gerçek mod konseptlerini (örn: sis, kasvetli hava durumu modları, zindan aydınlatmaları, koyu zırhlar) düşün. Bu konseptlerin NexusMods veritabanında en çok eşleşeceği İngilizce karşılıklarını (örn: 'somber bleak weather volumetric fog dark dungeons gothic grim') çıkartıp "englishKeywords" alanına ekle.
+        3. Kullanıcının aradığı oyun türünü veya oyun adını tespit et ("detectedGame" alanına 'skyrimspecialedition', 'fallout4', 'falloutnewvegas', 'oblivion', 'stardewvalley', 'cyberpunk2077', 'baldursgate3' değerlerinden birini veya algılamadıysan 'all' değerini koy).
+        4. Kullanıcının sıralama tercihini tespit et: "en popüler", "en çok indirilen" diyorsa "downloads"; "en yeni", "son çıkan" diyorsa "newest"; aksi halde "default" değerini "sortBy" alanına koy.
+        5. Kullanıcıya yönelik, aramayı nasıl yorumladığını ve neden bu modları seçtiğini açıklayan çok samimi, sıcak ve profesyonel Türkçe bir yapay zeka asistan mesajı yaz ("aiResponse" alanı).
+        
+        Çıktıyı kesinlikle şu JSON formatında vermelisin:
+        {
+          "detectedIntent": "Kullanıcının amacının kısa Türkçe özeti (örn: Karanlık Gotik Atmosfer)",
+          "englishKeywords": "İlişkili tüm İngilizce mod terimleri ve konseptleri (boşluklarla ayrılmış)",
+          "detectedGame": "skyrimspecialedition | fallout4 | falloutnewvegas | oblivion | stardewvalley | cyberpunk2077 | baldursgate3 | all",
+          "sortBy": "downloads | newest | default",
+          "aiResponse": "Kullanıcıya samimi ve açıklayıcı Türkçe yapay zeka mesajı"
+        }
+
         Kullanıcı Sorgusu: "${userQuery}"`;
 
-        const result = await model.generateContent(prompt);
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        });
+        
         const response = await result.response;
-        return response.text().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"");
+        let rawText = response.text().trim();
+        
+        // Markdown kod bloklarını temizle
+        if (rawText.startsWith("```")) {
+            rawText = rawText.replace(/^```[a-zA-Z]*/, "");
+            rawText = rawText.replace(/```$/, "");
+        }
+        rawText = rawText.trim();
+        
+        const parsed = JSON.parse(rawText);
+        return {
+            detectedIntent: parsed.detectedIntent || "Özel Arama",
+            englishKeywords: parsed.englishKeywords || userQuery,
+            detectedGame: parsed.detectedGame || "all",
+            sortBy: parsed.sortBy || "default",
+            aiResponse: parsed.aiResponse || "Aramanız için en uygun konsept modları listelendi."
+        };
     } catch (error) {
         console.error("AI Çeviri Hatası:", error);
-        return userQuery;
+        return {
+            detectedIntent: "Standart Arama (Hata Sonrası)",
+            englishKeywords: userQuery,
+            detectedGame: "all",
+            sortBy: "default",
+            aiResponse: "Arama sırasında yapay zeka servisinde bir sorun oluştu, ancak standart kelime eşleştirme ile sonuçlar getiriliyor."
+        };
     }
 }
 
@@ -108,11 +160,7 @@ if (MONGO_URI) {
 app.get('/api/search', async (req, res) => {
     trackSearch(); // Günlük arama sayacını artır
     const query = req.query.q;
-    const gameDomain = req.query.game || 'skyrimspecialedition'; // Varsayılan oyun: Skyrim SE
-
-    if (query !== '' && query.length < 2) {
-        // En azından 2 karakter olabilir ya da boş olabilir
-    }
+    const gameDomain = req.query.game || 'all'; // Varsayılan oyun: hepsi
 
     // NexusMods apiKey .env dosyasında bulunur
     const apiKey = process.env.NEXUS_API_KEY;
@@ -122,56 +170,85 @@ app.get('/api/search', async (req, res) => {
 
     try {
         let filterCondition = {};
+        let aiResult = null;
 
-        // 1. Önce "Karışık (all)" değilse ve spesifik bir Oyun seçilmişse sadece o oyunun modlarını süz
-        if (gameDomain !== 'all') {
+        // 1. Kullanıcının aradığı kelimeyi (query) bulutta arıyoruz (NLP/Metin Eşleştirme)
+        let lowerQuery = query ? query.toLowerCase().trim() : "";
+
+        console.log(`🔍 Arama İsteği: q="${query}", game="${gameDomain}"`);
+
+        // EĞER sorgu girildiyse AI devreye girsin
+        if (lowerQuery.length >= 2) {
+            console.log(`🤖 AI Sorgu Analizi Başlıyor: "${lowerQuery}"`);
+            aiResult = await translateQueryWithAI(lowerQuery);
+            console.log(`✅ AI Sonucu:`, aiResult);
+        }
+
+        // 2. Oyun Filtresini belirle
+        let targetGame = gameDomain;
+        // Eğer kullanıcı genel arama (all) seçtiyse ama AI belirli bir oyunu algıladıysa, otomatik oraya daralt
+        if (targetGame === 'all' && aiResult && aiResult.detectedGame && aiResult.detectedGame !== 'all') {
+            targetGame = aiResult.detectedGame;
+            console.log(`🎯 AI Oyunu Otomatik Algıladı: ${targetGame}`);
+        }
+
+        if (targetGame !== 'all') {
             filterCondition = {
                 $or: [
-                    { domain_name: gameDomain },
-                    { category_name: gameDomain }
+                    { domain_name: targetGame },
+                    { category_name: targetGame }
                 ]
             };
         }
 
-        // 2. Kullanıcının aradığı kelimeyi (query) bulutta arıyoruz (NLP/Metin Eşleştirme)
-        let lowerQuery = query ? query.toLowerCase() : "";
-        let aiEnhancedQuery = lowerQuery;
-
-        console.log(`🔍 Arama İsteği: q="${query}", game="${gameDomain}"`);
-
-        // EĞER sorgu Türkçe karakterler içeriyorsa veya kullanıcı "ne istediğini" anlatıyorsa AI devreye girsin
-        if (lowerQuery.length >= 2) {
-            console.log(`🤖 AI Sorgu Analizi Başlıyor: "${lowerQuery}"`);
-            aiEnhancedQuery = await translateQueryWithAI(lowerQuery);
-            console.log(`✅ AI Sonucu: "${aiEnhancedQuery}"`);
+        // 3. Anahtar kelimeleri MongoDB arama filtresine ekle
+        let searchKeywords = lowerQuery;
+        if (aiResult && aiResult.englishKeywords) {
+            // Orijinal sorgu ile genişletilmiş İngilizce anahtar kelimeleri birleştir
+            searchKeywords = `${lowerQuery} ${aiResult.englishKeywords}`;
         }
-        
-        // Eğer aranan kelime 2 karakterden uzun veya eşitse filtrelemeyi yap
-        if (aiEnhancedQuery && aiEnhancedQuery.length >= 2) {
-            // Hem orijinal sorguyu hem AI çevirisini kullanarak daha geniş bir havuzda ara
-            filterCondition.$text = { $search: `${lowerQuery} ${aiEnhancedQuery}` };
+
+        if (searchKeywords && searchKeywords.length >= 2) {
+            filterCondition.$text = { $search: searchKeywords };
         }
         
         console.log("🛠️ MongoDB Filtresi:", JSON.stringify(filterCondition));
 
+        // 4. Sıralama Koşulunu belirle
+        let sortCondition = {};
+        if (aiResult && aiResult.sortBy === 'downloads') {
+            sortCondition = { mod_downloads: -1 };
+        } else if (aiResult && aiResult.sortBy === 'newest') {
+            sortCondition = { created_timestamp: -1 };
+        } else if (filterCondition.$text) {
+            // Varsayılan olarak text search score ile sırala
+            sortCondition = { score: { $meta: "textScore" } };
+        } else {
+            sortCondition = { mod_downloads: -1 };
+        }
+
         // MongoDB'den filtreye uyan modları çekiyoruz (performans için sadece ilk 1000'i)
         let filteredMods;
         if (filterCondition.$text) {
-            // Text search score (relevance) ekliyoruz ve buna göre sıralıyoruz
             filteredMods = await Mod.find(
                 filterCondition,
                 { score: { $meta: "textScore" } }
-            ).sort({ score: { $meta: "textScore" } }).limit(1000).lean();
+            ).sort(sortCondition).limit(1000).lean();
         } else {
-            // Text search yoksa indirme sayısına göre sırala (Örn: Keşfet sayfası açılışı)
-            filteredMods = await Mod.find(filterCondition).sort({ mod_downloads: -1 }).limit(1000).lean();
+            filteredMods = await Mod.find(filterCondition).sort(sortCondition).limit(1000).lean();
         }
 
         console.log(`📊 Bulunan Mod Sayısı: ${filteredMods.length}`);
 
         res.json({ 
             mods: filteredMods, 
-            aiQuery: aiEnhancedQuery 
+            aiQuery: aiResult ? aiResult.englishKeywords : lowerQuery,
+            aiMetadata: aiResult ? {
+                detectedIntent: aiResult.detectedIntent,
+                sortBy: aiResult.sortBy,
+                detectedGame: aiResult.detectedGame,
+                aiResponse: aiResult.aiResponse
+            } : null
         });
 
     } catch (error) {
