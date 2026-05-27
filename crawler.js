@@ -33,9 +33,10 @@ async function crawlMods() {
 
     // 1. Oyun Havuzu: Manuel Belirlenen Oyunlar
     const GAME_LIMITS = {
+        'skyrimspecialedition': 100,
         'fallout4': 500,
         'newvegas': 500,
-        'oblivion': 500,
+        'oblivion': 400,
         'stardewvalley': 500,
         'cyberpunk2077': 500,
         'baldursgate3': 500,
