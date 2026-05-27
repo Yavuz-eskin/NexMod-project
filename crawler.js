@@ -33,13 +33,13 @@ async function crawlMods() {
 
     // 1. Oyun Havuzu: Manuel Belirlenen Oyunlar
     const GAME_LIMITS = {
-        'skyrimspecialedition': 7000,
-        'fallout4': 500,
-        'falloutnewvegas': 500,
-        'oblivion': 500,
-        'stardewvalley': 500,
-        'cyberpunk2077': 500,
-        'baldursgate3': 500
+        'skyrimspecialedition': 500,
+        'fallout4': 1500,
+        'falloutnewvegas': 1500,
+        'oblivion': 1500,
+        'stardewvalley': 1500,
+        'cyberpunk2077': 1500,
+        'baldursgate3': 1500
     };
     const TOP_GAMES = Object.keys(GAME_LIMITS);
     console.log(`Hedeflenen ${TOP_GAMES.length} oyun taranacak.`);
