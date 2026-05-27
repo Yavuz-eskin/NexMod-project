@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Activity, Users, Settings, Database, RefreshCw } from 'lucide-react';
+import { Activity, Database, Settings, RefreshCw } from 'lucide-react';
 import { AppContext } from '../context/AppContext';
 import './Dashboard.css';
 
@@ -23,46 +23,154 @@ function Dashboard() {
     } catch (err) {
       setStatsError(err.message);
     } finally {
-      setStatsLoading(false);
+      setLoadingState();
     }
   };
 
+  const setLoadingState = () => {
+    // Küçük bir gecikme ekleyerek UX'i iyileştirelim
+    setTimeout(() => {
+      setStatsLoading(false);
+    }, 300);
+  };
+
   useEffect(() => {
-    if (activeTab === 'istatistikler') {
+    if (activeTab === 'istatistikler' || activeTab === 'modlar') {
       fetchStats();
       const interval = setInterval(fetchStats, 60000); // 60 saniyede bir yenile
       return () => clearInterval(interval);
     }
   }, [activeTab, token]);
 
+  const getGameInfo = (domain) => {
+    const games = {
+      'skyrimspecialedition': { name: 'Skyrim Special Edition', color: '#6366f1', icon: '❄️' },
+      'fallout4': { name: 'Fallout 4', color: '#eab308', icon: '☢️' },
+      'falloutnewvegas': { name: 'Fallout New Vegas', color: '#f97316', icon: '🎲' },
+      'oblivion': { name: 'Oblivion', color: '#ef4444', icon: '⚔️' },
+      'stardewvalley': { name: 'Stardew Valley', color: '#22c55e', icon: '🌾' },
+      'cyberpunk2077': { name: 'Cyberpunk 2077', color: '#eab308', icon: '⚡' },
+      'baldursgate3': { name: "Baldur's Gate 3", color: '#ec4899', icon: '🐉' },
+      'starfield': { name: 'Starfield', color: '#3b82f6', icon: '🚀' },
+      'witcher3': { name: 'The Witcher 3', color: '#b91c1c', icon: '🐺' },
+      'skyrim': { name: 'Skyrim Classic', color: '#818cf8', icon: '⚔️' },
+      'valheim': { name: 'Valheim', color: '#f59e0b', icon: '⛵' },
+      'subnautica': { name: 'Subnautica', color: '#06b6d4', icon: '🌊' }
+    };
+    return games[domain] || { name: domain.charAt(0).toUpperCase() + domain.slice(1), color: '#a855f7', icon: '🎮' };
+  };
+
   const renderContent = () => {
     switch (activeTab) {
-      case 'kullanicilar':
-        return (
-          <>
-            <header className="dashboard-header">
-              <h1>Kullanıcılar</h1>
-            </header>
-            <div className="tab-content" style={{ marginTop: '20px', padding: '20px', backgroundColor: 'var(--card-bg)', borderRadius: '12px' }}>
-              <h2>Kullanıcı Yönetimi</h2>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>
-                Burada sisteme kayıtlı kullanıcıları görüntüleyebilir, düzenleyebilir veya silebilirsiniz.
-              </p>
-            </div>
-          </>
-        );
-
       case 'modlar':
         return (
           <>
-            <header className="dashboard-header">
-              <h1>Mod Veritabanı</h1>
+            <header className="dashboard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <h1>Mod Veritabanı Dağılımı</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {lastUpdated && (
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    Son güncelleme: {lastUpdated}
+                  </span>
+                )}
+                <button
+                  onClick={fetchStats}
+                  disabled={statsLoading}
+                  style={{
+                    background: 'rgba(139,92,246,0.15)',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    color: '#a78bfa',
+                    borderRadius: '8px',
+                    padding: '0.4rem 0.8rem',
+                    cursor: statsLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontSize: '0.85rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <RefreshCw size={14} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
+                  Yenile
+                </button>
+              </div>
             </header>
-            <div className="tab-content" style={{ marginTop: '20px', padding: '20px', backgroundColor: 'var(--card-bg)', borderRadius: '12px' }}>
-              <h2>Mod Yönetimi</h2>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>
-                Sisteme kayıtlı tüm modların onay süreçlerini ve güncellemelerini buradan kontrol edebilirsiniz.
-              </p>
+
+            {statsError && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', color: '#fca5a5' }}>
+                ⚠️ Veriler yüklenemedi: {statsError}
+              </div>
+            )}
+
+            <div style={{ marginTop: '20px', padding: '24px', backgroundColor: 'rgba(30,41,59,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
+              <h2 style={{ marginBottom: '1.75rem', fontSize: '1.25rem', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Database size={20} color="#8b5cf6" /> Veritabanındaki Oyunların Mod Sayıları
+              </h2>
+              
+              {statsLoading ? (
+                <div style={{ textAlign: 'center', padding: '4rem', color: '#8b5cf6' }}>
+                  <RefreshCw size={40} style={{ animation: 'spin 1.5s linear infinite' }} />
+                  <p style={{ marginTop: '1rem', color: '#94a3b8' }}>Veritabanı taranıyor...</p>
+                </div>
+              ) : !stats?.gameStats || stats.gameStats.length === 0 ? (
+                <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>Veritabanında henüz mod dağılım verisi bulunmuyor.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                  {stats.gameStats.map((gameStat) => {
+                    const gameInfo = getGameInfo(gameStat._id);
+                    const percentage = stats.totalMods ? Math.max(1, Math.round((gameStat.count / stats.totalMods) * 100)) : 0;
+                    return (
+                      <div key={gameStat._id} style={{
+                        background: 'rgba(15, 23, 42, 0.4)',
+                        border: `1px solid rgba(255, 255, 255, 0.03)`,
+                        borderLeft: `4px solid ${gameInfo.color}`,
+                        borderRadius: '12px',
+                        padding: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: 'default'
+                      }}
+                      className="game-stat-card"
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-5px) scale(1.02)';
+                        e.currentTarget.style.boxShadow = `0 10px 20px -10px ${gameInfo.color}30`;
+                        e.currentTarget.style.borderColor = `${gameInfo.color}40`;
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.03)';
+                      }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontSize: '2rem', filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.15))' }}>{gameInfo.icon}</span>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={gameInfo.name}>
+                              {gameInfo.name}
+                            </h3>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>domain: {gameStat._id}</span>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: gameInfo.color }}>
+                            {gameStat.count.toLocaleString('tr-TR')}
+                          </span>
+                          <span style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 500 }}>
+                            %{percentage} pay
+                          </span>
+                        </div>
+                        
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div style={{ width: `${percentage}%`, height: '100%', background: gameInfo.color, borderRadius: '99px', transition: 'width 0.5s ease-out' }}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </>
         );
@@ -73,9 +181,9 @@ function Dashboard() {
             <header className="dashboard-header">
               <h1>Ayarlar</h1>
             </header>
-            <div className="tab-content" style={{ marginTop: '20px', padding: '20px', backgroundColor: 'var(--card-bg)', borderRadius: '12px' }}>
+            <div className="tab-content" style={{ marginTop: '20px', padding: '20px', backgroundColor: 'rgba(30,41,59,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }}>
               <h2>Sistem Ayarları</h2>
-              <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>
+              <p style={{ color: '#94a3b8', marginTop: '10px' }}>
                 Uygulama tercihlerini ve genel yapılandırma seçeneklerini buradan yönetebilirsiniz.
               </p>
             </div>
@@ -125,13 +233,7 @@ function Dashboard() {
 
             <div className="stats-grid">
               <div className="stat-card">
-                <h3>Toplam Kullanıcı</h3>
-                <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
-                  {statsLoading ? '—' : (stats?.totalUsers?.toLocaleString('tr-TR') ?? '—')}
-                </p>
-              </div>
-              <div className="stat-card">
-                <h3>Toplam Mod</h3>
+                <h3>Toplam Kayıtlı Mod</h3>
                 <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
                   {statsLoading ? '—' : (stats?.totalMods?.toLocaleString('tr-TR') ?? '—')}
                 </p>
@@ -140,6 +242,12 @@ function Dashboard() {
                 <h3>Bugün Yapılan Aramalar</h3>
                 <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
                   {statsLoading ? '—' : (stats?.dailySearches?.toLocaleString('tr-TR') ?? '—')}
+                </p>
+              </div>
+              <div className="stat-card">
+                <h3>Kayıtlı Oyun Çeşidi</h3>
+                <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
+                  {statsLoading ? '—' : (stats?.gameStats?.length ?? '—')}
                 </p>
               </div>
             </div>
@@ -199,9 +307,6 @@ function Dashboard() {
         <ul className="sidebar-menu">
           <li className={activeTab === 'istatistikler' ? 'active' : ''} onClick={() => setActiveTab('istatistikler')}>
             <Activity size={20} /> İstatistikler
-          </li>
-          <li className={activeTab === 'kullanicilar' ? 'active' : ''} onClick={() => setActiveTab('kullanicilar')}>
-            <Users size={20} /> Kullanıcılar
           </li>
           <li className={activeTab === 'modlar' ? 'active' : ''} onClick={() => setActiveTab('modlar')}>
             <Database size={20} /> Mod Veritabanı
