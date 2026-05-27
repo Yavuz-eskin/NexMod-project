@@ -20,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'nexmod_super_gizli_anahtar_123';
 let genAI, model;
 if (process.env.GEMINI_API_KEY) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 }
 
 // Temel Türkçe - İngilizce Mod Terimleri Sözlüğü (AI çalışmasa bile temel arama desteği için)
