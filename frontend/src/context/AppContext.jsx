@@ -34,10 +34,10 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      // Decode the JWT or just assume login is valid until fetch fails
       const storedUsername = localStorage.getItem('username');
+      const storedRole = localStorage.getItem('role') || 'user';
       if (storedUsername) {
-        setUser({ username: storedUsername });
+        setUser({ username: storedUsername, role: storedRole });
       }
 
       fetch('/api/user/favorites', {
@@ -68,7 +68,8 @@ export const AppProvider = ({ children }) => {
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', data.username);
-    setUser({ username: data.username, avatarSeed: data.avatarSeed });
+    localStorage.setItem('role', data.role || 'user');
+    setUser({ username: data.username, avatarSeed: data.avatarSeed, role: data.role || 'user' });
     setFavorites(data.favorites || []);
     setIsAuthModalOpen(false);
   };
@@ -85,7 +86,8 @@ export const AppProvider = ({ children }) => {
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', data.username);
-    setUser({ username: data.username, avatarSeed: data.avatarSeed });
+    localStorage.setItem('role', data.role || 'user');
+    setUser({ username: data.username, avatarSeed: data.avatarSeed, role: data.role || 'user' });
     setFavorites(data.favorites || []);
     setIsAuthModalOpen(false);
   };
@@ -96,6 +98,7 @@ export const AppProvider = ({ children }) => {
     setFavorites([]);
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
   };
 
   const toggleFavorite = async (mod) => {

@@ -24,6 +24,11 @@ const UserSchema = new mongoose.Schema({
     avatarSeed: {
         type: String,
         default: ""
+    },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user'
     }
 }, { timestamps: true });
 

@@ -4,7 +4,7 @@ import { AppContext } from '../context/AppContext';
 import './Dashboard.css';
 
 function Dashboard() {
-  const { token } = useContext(AppContext);
+  const { token, user } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState('istatistikler');
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -16,7 +16,10 @@ function Dashboard() {
     setCrawlerTriggering(true);
     try {
       const res = await fetch('/api/admin/run-crawler', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'İşlem başarısız');
@@ -194,6 +197,35 @@ function Dashboard() {
         );
 
       case 'ayarlar':
+        if (!user || user.role !== 'admin') {
+          return (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '60vh',
+              textAlign: 'center',
+              padding: '2rem'
+            }}>
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '24px',
+                padding: '3rem',
+                maxWidth: '500px',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+              }}>
+                <span style={{ fontSize: '4rem', display: 'block', marginBottom: '1.5rem' }}>🛡️</span>
+                <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc', marginBottom: '1rem' }}>Erişim Engellendi</h1>
+                <p style={{ color: '#94a3b8', fontSize: '1rem', lineHeight: 1.6, margin: 0 }}>
+                  Bu sekme yalnızca yönetici (admin) yetkilerine sahip hesaplar tarafından görüntülenebilir. Yetkili bir hesapla giriş yaptığınızdan emin olun.
+                </p>
+              </div>
+            </div>
+          );
+        }
         return (
           <>
             <header className="dashboard-header">
@@ -448,9 +480,11 @@ function Dashboard() {
           <li className={activeTab === 'modlar' ? 'active' : ''} onClick={() => setActiveTab('modlar')}>
             <Database size={20} /> Mod Veritabanı
           </li>
-          <li className={activeTab === 'ayarlar' ? 'active' : ''} onClick={() => setActiveTab('ayarlar')}>
-            <Settings size={20} /> Ayarlar
-          </li>
+          {user && user.role === 'admin' && (
+            <li className={activeTab === 'ayarlar' ? 'active' : ''} onClick={() => setActiveTab('ayarlar')}>
+              <Settings size={20} /> Ayarlar
+            </li>
+          )}
         </ul>
       </aside>
 

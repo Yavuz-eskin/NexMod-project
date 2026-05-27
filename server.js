@@ -341,8 +341,12 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Robotu Manuel Tetikleme Endpointi (POST)
-app.post('/api/admin/run-crawler', (req, res) => {
+// Robotu Manuel Tetikleme Endpointi (POST) - Sadece Admin Yetkisine Sahip Kullanıcılar
+app.post('/api/admin/run-crawler', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Yetkisiz Erişim! Bu işlem için yönetici yetkilerine sahip olmalısınız.' });
+    }
+
     if (isCrawlerRunning) {
         return res.status(400).json({ error: 'Robot zaten şu anda arka planda çalışıyor.' });
     }
@@ -425,13 +429,14 @@ app.post('/api/auth/register', async (req, res) => {
         const newUser = new User({ username, password: hashedPassword, favorites: [] });
         await newUser.save();
 
-        const token = jwt.sign({ id: newUser._id, username: newUser.username }, JWT_SECRET, { expiresIn: '30d' });
+        const token = jwt.sign({ id: newUser._id, username: newUser.username, role: newUser.role }, JWT_SECRET, { expiresIn: '30d' });
         res.status(201).json({ 
             token, 
             username: newUser.username, 
             favorites: newUser.favorites, 
             avatarSeed: newUser.avatarSeed,
-            preferences: newUser.preferences 
+            preferences: newUser.preferences,
+            role: newUser.role
         });
     } catch (err) {
         res.status(500).json({ error: 'Kayıt olurken bir hata oluştu.' });
@@ -452,13 +457,14 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Hatalı şifre.' });
         }
 
-        const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+        const token = jwt.sign({ id: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
         res.json({ 
             token, 
             username: user.username, 
             favorites: user.favorites, 
             avatarSeed: user.avatarSeed || "",
-            preferences: user.preferences 
+            preferences: user.preferences,
+            role: user.role
         });
     } catch (err) {
         res.status(500).json({ error: 'Giriş yapılırken sunucu hatası.' });
