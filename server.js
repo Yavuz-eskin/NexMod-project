@@ -240,8 +240,34 @@ app.get('/api/search', async (req, res) => {
 
         console.log(`📊 Bulunan Mod Sayısı: ${filteredMods.length}`);
 
+        // 5. Her mod için yama ve hata düzeltme modlarını (fixMods) veritabanında paralel olarak bul (İlk 50 mod için)
+        const modsWithFixes = await Promise.all(
+            filteredMods.slice(0, 50).map(async (mod) => {
+                const baseName = mod.name.split(' ').slice(0, 3).join(' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                if (baseName.length > 4) {
+                    const fixMods = await Mod.find({
+                        domain_name: mod.domain_name,
+                        mod_id: { $ne: mod.mod_id },
+                        name: { $regex: new RegExp(`^${baseName}.*(fix|patch|bugfix|update|compatibility|uyum|yama)`, "i") }
+                    }).limit(3).select('mod_id name domain_name').lean();
+                    mod.fixMods = fixMods;
+                } else {
+                    mod.fixMods = [];
+                }
+                return mod;
+            })
+        );
+
+        const finalMods = [
+            ...modsWithFixes,
+            ...filteredMods.slice(50).map(m => {
+                m.fixMods = [];
+                return m;
+            })
+        ];
+
         res.json({ 
-            mods: filteredMods, 
+            mods: finalMods, 
             aiQuery: aiResult ? aiResult.englishKeywords : lowerQuery,
             aiMetadata: aiResult ? {
                 detectedIntent: aiResult.detectedIntent,

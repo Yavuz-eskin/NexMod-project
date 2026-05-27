@@ -109,7 +109,18 @@ function Home({ isTopMods = false, isFavorites = false }) {
   };
 
   const pageInfo = getPageTitle();
-  const visibleMods = mods.slice(0, visibleCount);
+
+  // Modları yapay zeka eşleşme yüzdesine göre sırala (Büyükten küçüğe)
+  const sortedMods = React.useMemo(() => {
+    if (!searchQuery.trim()) return mods;
+    return [...mods].sort((a, b) => {
+      const scoreA = calculateMatchPercentage(a, searchQuery, aiQuery);
+      const scoreB = calculateMatchPercentage(b, searchQuery, aiQuery);
+      return scoreB - scoreA;
+    });
+  }, [mods, searchQuery, aiQuery]);
+
+  const visibleMods = sortedMods.slice(0, visibleCount);
   const hasMore = visibleCount < mods.length;
 
   return (
@@ -252,9 +263,42 @@ function Home({ isTopMods = false, isFavorites = false }) {
                       </div>
                     </div>
 
-                    <div className="mod-card-content">
+                    <div className="mod-card-content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                       <h3 className="mod-card-title" title={mod.name}>{mod.name}</h3>
                       <p className="mod-card-description">{mod.summary || 'Açıklama bulunmuyor.'}</p>
+                      
+                      {mod.fixMods && mod.fixMods.length > 0 && (
+                        <div className="mod-fix-list" style={{
+                          marginTop: '0.75rem',
+                          padding: '0.6rem 0.8rem',
+                          background: 'rgba(239, 68, 68, 0.04)',
+                          border: '1px solid rgba(239, 68, 68, 0.15)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.35rem'
+                        }}>
+                          <span style={{ fontSize: '0.72rem', color: '#fca5a5', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            🔧 Uyumlu Yama & Fix Modları:
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            {mod.fixMods.map(fix => (
+                              <a 
+                                key={fix.mod_id}
+                                href={`https://www.nexusmods.com/${fix.domain_name}/mods/${fix.mod_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: '0.76rem', color: '#f87171', textDecoration: 'none', transition: 'color 0.2s', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                onMouseOver={(e) => e.target.style.color = '#ef4444'}
+                                onMouseOut={(e) => e.target.style.color = '#f87171'}
+                              >
+                                • {fix.name}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="mod-card-footer" style={{ marginTop: 'auto', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
                         <a 
                           href={`https://www.nexusmods.com/${mod.domain_name || 'skyrimspecialedition'}/mods/${mod.mod_id}`}
