@@ -10,6 +10,24 @@ function Dashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [crawlerTriggering, setCrawlerTriggering] = useState(false);
+
+  const handleRunCrawler = async () => {
+    setCrawlerTriggering(true);
+    try {
+      const res = await fetch('/api/admin/run-crawler', {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'İşlem başarısız');
+      alert(data.message);
+      fetchStats();
+    } catch (err) {
+      alert(`Hata: ${err.message}`);
+    } finally {
+      setCrawlerTriggering(false);
+    }
+  };
 
   const fetchStats = async () => {
     setStatsLoading(true);
@@ -179,13 +197,132 @@ function Dashboard() {
         return (
           <>
             <header className="dashboard-header">
-              <h1>Ayarlar</h1>
+              <h1>Sistem Kontrol & Ayarlar</h1>
             </header>
-            <div className="tab-content" style={{ marginTop: '20px', padding: '20px', backgroundColor: 'rgba(30,41,59,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-              <h2>Sistem Ayarları</h2>
-              <p style={{ color: '#94a3b8', marginTop: '10px' }}>
-                Uygulama tercihlerini ve genel yapılandırma seçeneklerini buradan yönetebilirsiniz.
-              </p>
+            
+            {/* Canlı Sistem Durum Paneli */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginTop: '20px' }}>
+              <div style={{
+                background: 'rgba(30, 41, 59, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Veritabanı Durumu</h3>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginTop: '0.25rem' }}>MongoDB Atlas</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', padding: '0.4rem 0.8rem', borderRadius: '99px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 600 }}>Aktif</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(30, 41, 59, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>NexusMods API</h3>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginTop: '0.25rem' }}>Bağlantı Durumu</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', padding: '0.4rem 0.8rem', borderRadius: '99px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 600 }}>Hazır</span>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(30, 41, 59, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Yapay Zeka Durumu</h3>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', display: 'block', marginTop: '0.25rem' }}>Gemini AI (1.5)</span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem', 
+                  background: stats?.geminiStatus ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                  padding: '0.4rem 0.8rem', 
+                  borderRadius: '99px', 
+                  border: stats?.geminiStatus ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)' 
+                }}>
+                  <span style={{ width: '8px', height: '8px', background: stats?.geminiStatus ? '#22c55e' : '#ef4444', borderRadius: '50%', display: 'inline-block' }}></span>
+                  <span style={{ fontSize: '0.75rem', color: stats?.geminiStatus ? '#4ade80' : '#fca5a5', fontWeight: 600 }}>
+                    {stats?.geminiStatus ? 'Aktif' : 'Çevrimdışı'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Manuel Robot Yönetim Widget'ı */}
+            <div style={{ marginTop: '24px', padding: '24px', backgroundColor: 'rgba(30,41,59,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+                <div style={{ flex: 1, minWidth: '250px' }}>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                    🤖 NexusMods Tarayıcı Robot Kontrolü
+                  </h2>
+                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.5rem', margin: 0, lineHeight: 1.5 }}>
+                    Her gece 03:00'te çalışan otomatik tarama botunu şu anda manuel olarak anında başlatabilirsiniz. 
+                    Robot arka planda yeni modları arayacak ve veritabanınıza ekleyecektir.
+                  </p>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Robot Durumu:</span>
+                    <span style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: stats?.isCrawlerRunning ? '#fbbf24' : '#34d399',
+                      background: stats?.isCrawlerRunning ? 'rgba(251,191,36,0.1)' : 'rgba(52,211,153,0.1)',
+                      border: stats?.isCrawlerRunning ? '1px solid rgba(251,191,36,0.2)' : '1px solid rgba(52,211,153,0.2)',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '99px'
+                    }}>
+                      {stats?.isCrawlerRunning ? 'Çalışıyor ⏳' : 'Boşta ✅'}
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={handleRunCrawler}
+                    disabled={stats?.isCrawlerRunning || crawlerTriggering}
+                    style={{
+                      background: stats?.isCrawlerRunning ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                      color: stats?.isCrawlerRunning ? '#64748b' : 'white',
+                      border: 'none',
+                      padding: '0.8rem 1.5rem',
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      cursor: (stats?.isCrawlerRunning || crawlerTriggering) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.3s ease',
+                      boxShadow: stats?.isCrawlerRunning ? 'none' : '0 4px 15px rgba(124, 58, 237, 0.3)',
+                      fontFamily: 'inherit',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    {crawlerTriggering ? 'Tetikleniyor...' : stats?.isCrawlerRunning ? 'Robot Çalışıyor...' : 'Robotu Manuel Başlat'}
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         );

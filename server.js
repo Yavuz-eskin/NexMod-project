@@ -135,6 +135,23 @@ app.use(express.json());
 const path = require('path');
 app.use(express.static(path.join(__dirname, 'frontend/dist')));
 
+// Robot / Crawler Durum Takibi ve Güvenli Çalıştırıcısı
+let isCrawlerRunning = false;
+
+async function runCrawlerSafe() {
+    if (isCrawlerRunning) return;
+    isCrawlerRunning = true;
+    try {
+        console.log("🤖 Arka planda Robot/Crawler başlatılıyor...");
+        await crawlMods();
+        console.log("✅ Arka planda Robot/Crawler başarıyla tamamlandı.");
+    } catch (err) {
+        console.error("❌ Robot çalışırken beklenmedik hata oluştu:", err);
+    } finally {
+        isCrawlerRunning = false;
+    }
+}
+
 // MongoDB Database Bağlantısı
 const MONGO_URI = process.env.MONGO_URI;
 if (MONGO_URI) {
@@ -146,7 +163,7 @@ if (MONGO_URI) {
             cron.schedule('0 3 * * *', async () => {
                 console.log("⏰ Saat 03:00 Zamanlanmış Görev (Cron Job) Başlıyor...");
                 console.log("-> Otomatik NexusMods Crawler/Robot devreye girdi!");
-                await crawlMods();
+                await runCrawlerSafe();
                 console.log("✅ Gece 03:00 senkronizasyonu tamamlandı.");
             });
             console.log('Zamanlanmış Robot Aktif: Her gece 03:00\'te yeni modlar veritabanına ucretsiz sekilde eklenecek!');
@@ -314,12 +331,26 @@ app.get('/api/stats', async (req, res) => {
             totalMods,
             dailySearches: dailySearchCount,
             recentMods,
-            gameStats
+            gameStats,
+            isCrawlerRunning,
+            geminiStatus: !!process.env.GEMINI_API_KEY
         });
     } catch (error) {
         console.error('İstatistik hatası:', error.message);
         res.status(500).json({ error: 'İstatistikler alınamadı.' });
     }
+});
+
+// Robotu Manuel Tetikleme Endpointi (POST)
+app.post('/api/admin/run-crawler', (req, res) => {
+    if (isCrawlerRunning) {
+        return res.status(400).json({ error: 'Robot zaten şu anda arka planda çalışıyor.' });
+    }
+    
+    // Arka planda asenkron olarak başlat (HTTP isteğini bloke etmemek için await kullanmıyoruz!)
+    runCrawlerSafe();
+    
+    res.json({ message: 'Robot başarıyla arka planda başlatıldı! Sistem İstatistiklerinden veya Ayarlar sekmesinden takip edebilirsiniz.' });
 });
 
 // Yeni Eklenen "Çok Sevilenler" Menüsü için Endpoint (En Çok İndirilenleri Getirir)
