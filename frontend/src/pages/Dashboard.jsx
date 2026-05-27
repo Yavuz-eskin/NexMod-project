@@ -196,7 +196,7 @@ function Dashboard() {
           </>
         );
 
-      case 'ayarlar':
+      case 'admin':
         if (!user || user.role !== 'admin') {
           return (
             <div style={{
@@ -481,8 +481,8 @@ function Dashboard() {
             <Database size={20} /> Mod Veritabanı
           </li>
           {user && user.role === 'admin' && (
-            <li className={activeTab === 'ayarlar' ? 'active' : ''} onClick={() => setActiveTab('ayarlar')}>
-              <Settings size={20} /> Ayarlar
+            <li className={activeTab === 'admin' ? 'active' : ''} onClick={() => setActiveTab('admin')}>
+              <Settings size={20} /> Admin
             </li>
           )}
         </ul>
