@@ -83,11 +83,13 @@ function Navbar() {
       
       // Update local storage and context
       localStorage.setItem('token', data.token);
-      // Since context handles updates dynamically, force refreshing the storage
+      localStorage.setItem('avatarSeed', data.avatarSeed);
+      
+      // Update local context object dynamically
       user.avatarSeed = data.avatarSeed;
       
       setStatusType('success');
-      setStatusMessage('Avatar tohumu başarıyla kaydedildi! Sayfa yenilendiğinde güncellenecektir.');
+      setStatusMessage('Avatar tohumu başarıyla kaydedildi! Sayfa yenileniyor...');
       setTimeout(() => {
         window.location.reload();
       }, 1000);

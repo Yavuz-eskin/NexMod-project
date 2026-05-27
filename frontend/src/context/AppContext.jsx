@@ -36,8 +36,9 @@ export const AppProvider = ({ children }) => {
     if (token) {
       const storedUsername = localStorage.getItem('username');
       const storedRole = localStorage.getItem('role') || 'user';
+      const storedAvatarSeed = localStorage.getItem('avatarSeed') || '';
       if (storedUsername) {
-        setUser({ username: storedUsername, role: storedRole });
+        setUser({ username: storedUsername, role: storedRole, avatarSeed: storedAvatarSeed });
       }
 
       fetch('/api/user/favorites', {
@@ -69,6 +70,7 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', data.username);
     localStorage.setItem('role', data.role || 'user');
+    localStorage.setItem('avatarSeed', data.avatarSeed || '');
     setUser({ username: data.username, avatarSeed: data.avatarSeed, role: data.role || 'user' });
     setFavorites(data.favorites || []);
     setIsAuthModalOpen(false);
@@ -87,6 +89,7 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', data.username);
     localStorage.setItem('role', data.role || 'user');
+    localStorage.setItem('avatarSeed', data.avatarSeed || '');
     setUser({ username: data.username, avatarSeed: data.avatarSeed, role: data.role || 'user' });
     setFavorites(data.favorites || []);
     setIsAuthModalOpen(false);
@@ -99,6 +102,7 @@ export const AppProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('role');
+    localStorage.removeItem('avatarSeed');
   };
 
   const toggleFavorite = async (mod) => {
