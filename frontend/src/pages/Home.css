@@ -179,6 +179,8 @@
 }
 
 .mod-card {
+  display: flex;
+  flex-direction: column;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 20px;
@@ -202,6 +204,9 @@
 
 .mod-card-content {
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .mod-card-title {
