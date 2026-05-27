@@ -87,7 +87,7 @@ async function crawlMods() {
             }
 
             // Her oyun için ayrılan request limitini (tarama sayısını) kontrol ediyoruz
-            while (requestsForThisGame < requestsPerGameLimit && failureStreak < 200 && globalRequests < MAX_DAILY_REQUESTS) {
+            while (requestsForThisGame < requestsPerGameLimit && failureStreak < 1500 && globalRequests < MAX_DAILY_REQUESTS) {
                 if (currentId > nexusMaxId) {
                     currentId = Math.floor(Math.random() * (nexusMaxId * 0.5));
                 }
