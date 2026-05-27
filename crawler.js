@@ -122,7 +122,6 @@ async function crawlMods() {
                     const res = await axios.get(modUrl, { headers: HEADERS });
                     globalRequests++;
                     requestsForThisGame++;
-                    
                     const modData = res.data;
                     if (modData.name && modData.status !== 'hidden' && modData.status !== 'not_published') {
                         modData.domain_name = game;
@@ -152,7 +151,7 @@ async function crawlMods() {
                 }
 
                 currentId += scanDirection;
-                await sleep(350); 
+                await sleep(350);
             }
             console.log(` ✅ [${game}] bitti. Tarama: ${requestsForThisGame}, Eklenen: ${addedForGame}, Toplam global: ${globalRequests}`);
 
