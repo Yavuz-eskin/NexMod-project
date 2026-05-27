@@ -33,13 +33,26 @@ async function crawlMods() {
 
     // 1. Oyun Havuzu: Manuel Belirlenen Oyunlar
     const GAME_LIMITS = {
-        'skyrimspecialedition': 500,
-        'fallout4': 1500,
-        'falloutnewvegas': 1500,
-        'oblivion': 1500,
-        'stardewvalley': 1500,
-        'cyberpunk2077': 1500,
-        'baldursgate3': 1500
+        'fallout4': 500,
+        'newvegas': 500,
+        'oblivion': 500,
+        'stardewvalley': 500,
+        'cyberpunk2077': 500,
+        'baldursgate3': 500,
+        'fallout3': 500,
+        'morrowind': 500,
+        'starfield': 500,
+        'helldivers2': 500,
+        'starwarsbattlefront22017': 500,
+        'bladeandsorcery': 500,
+        'witcher3': 500,
+        'mountandblade2bannerlord': 500,
+        '7daystodie': 500,
+        'eldenring': 500,
+        'monsterhunterworld': 500,
+        'marvelrivals': 500,
+        'reddeadredemption2': 500,
+        'mysummercar': 500
     };
     const TOP_GAMES = Object.keys(GAME_LIMITS);
     console.log(`Hedeflenen ${TOP_GAMES.length} oyun taranacak.`);
