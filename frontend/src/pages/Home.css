@@ -301,3 +301,7 @@
     padding: 2rem 1.5rem 2rem;
   }
 }
+
+.ai-match-badge.game-badge::before {
+  display: none !important;
+}

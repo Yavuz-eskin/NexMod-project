@@ -4,7 +4,23 @@ import { AppContext } from '../context/AppContext';
 import './Home.css';
 
 function Home({ isTopMods = false, isFavorites = false }) {
-  const { favorites, toggleFavorite, selectedGame } = useContext(AppContext);
+  const { favorites, toggleFavorite, selectedGame, gamesList } = useContext(AppContext);
+
+  const getGameName = (domainName) => {
+    const found = gamesList?.find(g => g.id === domainName);
+    if (found) return found.name;
+    if (!domainName) return 'Karışık';
+    const cleanMap = {
+      skyrimspecialedition: 'Skyrim Special Edition',
+      fallout4: 'Fallout 4',
+      falloutnewvegas: 'Fallout New Vegas',
+      stardewvalley: 'Stardew Valley',
+      cyberpunk2077: 'Cyberpunk 2077',
+      baldursgate3: "Baldur's Gate 3",
+      oblivion: 'Oblivion'
+    };
+    return cleanMap[domainName] || domainName.charAt(0).toUpperCase() + domainName.slice(1);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -258,8 +274,8 @@ function Home({ isTopMods = false, isFavorites = false }) {
                         <Heart size={18} fill={isFav ? '#ef4444' : 'none'} />
                       </button>
                       
-                      <div className="ai-match-badge">
-                        %{calculateMatchPercentage(mod, searchQuery, aiQuery)} AI Eşleşmesi
+                      <div className="ai-match-badge game-badge" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#c4b5fd', borderColor: 'rgba(139, 92, 246, 0.3)' }}>
+                        🎮 {getGameName(mod.domain_name)}
                       </div>
                     </div>
 

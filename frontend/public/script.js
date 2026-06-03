@@ -813,7 +813,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <ion-icon name="heart" class="hidden-icon"></ion-icon>
                         </div>
 
-                        <div class="ai-match-badge">%${matchPercent} AI Eşleşmesi</div>
+                        <div class="ai-match-badge game-badge" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3);">🎮 ${displayGameName}</div>
                     </div>
                     <div class="mod-info">
                         <h3>${title}</h3>
