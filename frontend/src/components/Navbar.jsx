@@ -325,6 +325,8 @@ function Navbar() {
             borderRadius: '24px',
             width: '100%',
             maxWidth: '520px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             padding: '2.5rem',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
             position: 'relative'
