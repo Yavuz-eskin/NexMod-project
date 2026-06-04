@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Activity, Database, Settings, RefreshCw } from 'lucide-react';
+import { Activity, Database, Settings, RefreshCw, Users, Trash2 } from 'lucide-react';
 import { AppContext } from '../context/AppContext';
 import './Dashboard.css';
 
@@ -11,6 +11,56 @@ function Dashboard() {
   const [statsError, setStatsError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [crawlerTriggering, setCrawlerTriggering] = useState(false);
+
+  // Kullanıcı Yönetimi State'leri
+  const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(null);
+
+  const fetchUsers = async () => {
+    if (!token || user?.role !== 'admin') return;
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const res = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Kullanıcılar alınamadı');
+      setUsersList(data.users || []);
+    } catch (err) {
+      setUsersError(err.message);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId, username) => {
+    if (!window.confirm(`"${username}" isimli kullanıcıyı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Kullanıcı silinemedi');
+      alert(data.message);
+      fetchUsers();
+      fetchStats();
+    } catch (err) {
+      alert(`Hata: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'admin') {
+      fetchUsers();
+    }
+  }, [activeTab, token]);
 
   const handleRunCrawler = async () => {
     setCrawlerTriggering(true);
@@ -355,6 +405,98 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Kullanıcı Yönetimi Paneli */}
+            <div style={{ marginTop: '24px', padding: '24px', backgroundColor: 'rgba(30,41,59,0.3)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                <Users size={20} color="#8b5cf6" /> Kayıtlı Kullanıcılar Yönetimi
+              </h2>
+              
+              {usersLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#8b5cf6' }}>
+                  <RefreshCw size={24} style={{ animation: 'spin 1.5s linear infinite' }} />
+                  <p style={{ marginTop: '0.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>Kullanıcılar yükleniyor...</p>
+                </div>
+              ) : usersError ? (
+                <p style={{ color: '#fca5a5', fontSize: '0.9rem' }}>Hata: {usersError}</p>
+              ) : usersList.length === 0 ? (
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Hiç kayıtlı kullanıcı bulunmuyor.</p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', color: '#cbd5e1', fontSize: '0.9rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', textAlign: 'left' }}>
+                        <th style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontWeight: 600 }}>Kullanıcı</th>
+                        <th style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontWeight: 600 }}>Rol</th>
+                        <th style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontWeight: 600 }}>Kayıt Tarihi</th>
+                        <th style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontWeight: 600, textAlign: 'right' }}>İşlemler</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usersList.map((u) => (
+                        <tr key={u._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <td style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', border: '1px solid rgba(139, 92, 246, 0.3)', backgroundColor: '#1e293b' }}>
+                              <img src={`https://api.dicebear.com/6.x/avataaars/svg?seed=${u.avatarSeed || u.username}`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <span style={{ fontWeight: 500, color: '#f8fafc' }}>{u.username}</span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: u.role === 'admin' ? '#c084fc' : '#94a3b8',
+                              background: u.role === 'admin' ? 'rgba(192, 132, 252, 0.1)' : 'rgba(255,255,255,0.05)',
+                              padding: '0.2rem 0.5rem',
+                              borderRadius: '4px',
+                              border: u.role === 'admin' ? '1px solid rgba(192, 132, 252, 0.2)' : '1px solid rgba(255,255,255,0.08)'
+                            }}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>
+                            {new Date(u.createdAt).toLocaleDateString('tr-TR')}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                            {u.role === 'admin' ? (
+                              <span style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>Korumalı</span>
+                            ) : (
+                              <button
+                                onClick={() => handleDeleteUser(u._id, u.username)}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  color: '#f87171',
+                                  borderRadius: '6px',
+                                  padding: '0.35rem 0.75rem',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 500,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                                }}
+                              >
+                                <Trash2 size={12} /> Hesabı Sil
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         );

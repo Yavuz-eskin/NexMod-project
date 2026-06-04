@@ -371,6 +371,40 @@ app.post('/api/admin/run-crawler', authenticateToken, (req, res) => {
     res.json({ message: 'Robot başarıyla arka planda başlatıldı! Sistem İstatistiklerinden veya Ayarlar sekmesinden takip edebilirsiniz.' });
 });
 
+// Adminlerin tüm kullanıcıları çekebilmesi için endpoint
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Yetkisiz Erişim! Bu işlem için yönetici yetkilerine sahip olmalısınız.' });
+    }
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 }).lean();
+        res.json({ users });
+    } catch (err) {
+        res.status(500).json({ error: 'Kullanıcı listesi alınamadı.' });
+    }
+});
+
+// Adminlerin bir kullanıcıyı silebilmesi için endpoint
+app.delete('/api/admin/users/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Yetkisiz Erişim! Bu işlem için yönetici yetkilerine sahip olmalısınız.' });
+    }
+    try {
+        const userId = req.params.id;
+        
+        // Kendi kendini silmeyi önle
+        if (userId === req.user.id) {
+            return res.status(400).json({ error: 'Kendi yöneticisi hesabınızı buradan silemezsiniz.' });
+        }
+
+        await User.findByIdAndDelete(userId);
+        res.json({ message: 'Kullanıcı hesabı başarıyla silindi.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Kullanıcı silinirken hata oluştu.' });
+    }
+});
+
+
 // Yeni Eklenen "Çok Sevilenler" Menüsü için Endpoint (En Çok İndirilenleri Getirir)
 app.get('/api/top-mods', async (req, res) => {
     const gameDomain = req.query.game || 'all';

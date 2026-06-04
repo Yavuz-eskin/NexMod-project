@@ -100,6 +100,30 @@ function Navbar() {
     } finally {
       setLoading(false);
     }
+  const handleDeleteOwnAccount = async () => {
+    if (!window.confirm('Hesabınızı tamamen ve kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+    
+    setLoading(true);
+    setStatusMessage('');
+    try {
+      const res = await fetch('/api/user/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Hesap silinirken bir sorun oluştu.');
+
+      alert('Hesabınız başarıyla silindi.');
+      setIsSettingsModalOpen(false);
+      logout();
+    } catch (err) {
+      setStatusType('error');
+      setStatusMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -479,6 +503,47 @@ function Navbar() {
                 {loading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
               </button>
             </form>
+
+            {/* Danger Zone: Delete Account */}
+            <div style={{
+              marginTop: '2rem',
+              paddingTop: '1.5rem',
+              borderTop: '1px solid rgba(239, 68, 68, 0.2)',
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                ⚠️ Tehlikeli Bölge
+              </h3>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                Hesabınızı sildiğinizde favori modlarınız ve tüm kişisel verileriniz kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+              </p>
+              <button
+                onClick={handleDeleteOwnAccount}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'inherit'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.18)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.45)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+                }}
+              >
+                {loading ? 'Hesap Siliniyor...' : 'Hesabımı Kalıcı Olarak Sil'}
+              </button>
+            </div>
           </div>
         </div>
       )}
