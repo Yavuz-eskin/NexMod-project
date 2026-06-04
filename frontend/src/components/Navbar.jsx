@@ -100,6 +100,8 @@ function Navbar() {
     } finally {
       setLoading(false);
     }
+  };
+
   const handleDeleteOwnAccount = async () => {
     if (!window.confirm('Hesabınızı tamamen ve kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
     
