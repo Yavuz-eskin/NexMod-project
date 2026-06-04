@@ -4,6 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
 const Mod = require('./models/Mod');
+const User = require('./models/User');
 const crawlMods = require('./crawler');
 require('dotenv').config();
 
@@ -423,7 +424,6 @@ app.get('/api/games', async (req, res) => {
 });
 
 // --- KULLANICI GİRİŞ / KAYIT SİSTEMİ EKLENTİSİ ---
-const User = require('./models/User');
 
 // Kayıt Ol Endpointi
 app.post('/api/auth/register', async (req, res) => {

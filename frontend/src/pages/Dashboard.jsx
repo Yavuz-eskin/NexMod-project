@@ -408,6 +408,12 @@ function Dashboard() {
                 </p>
               </div>
               <div className="stat-card">
+                <h3>Kayıtlı Kullanıcı Sayısı</h3>
+                <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
+                  {statsLoading ? '—' : (stats?.totalUsers?.toLocaleString('tr-TR') ?? '—')}
+                </p>
+              </div>
+              <div className="stat-card">
                 <h3>Bugün Yapılan Aramalar</h3>
                 <p className="stat-value" style={statsLoading ? { color: '#334155' } : {}}>
                   {statsLoading ? '—' : (stats?.dailySearches?.toLocaleString('tr-TR') ?? '—')}
