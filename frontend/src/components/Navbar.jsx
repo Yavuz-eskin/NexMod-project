@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Gamepad2, ChevronDown, Sparkles, Heart, Search, User, ShieldAlert, LogOut, Settings, Key, UserCog, Palette, Check, AlertCircle } from 'lucide-react';
+import { Gamepad2, ChevronDown, Sparkles, Heart, Search, User, ShieldAlert, LogOut, Settings, Key, UserCog, Palette, Check, AlertCircle, Menu, X } from 'lucide-react';
 import { AppContext } from '../context/AppContext';
 import './Navbar.css';
 
@@ -9,6 +9,7 @@ function Navbar() {
   const [isGameMenuOpen, setIsGameMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Settings Form States
   const [currentPassword, setCurrentPassword] = useState('');
@@ -106,7 +107,7 @@ function Navbar() {
       <div className="navbar-container">
         
         {/* Logo */}
-        <Link to="/" className="nav-logo">
+        <Link to="/" className="nav-logo" onClick={() => setIsMobileMenuOpen(false)}>
           <div className="logo-icon-wrapper">
             <Sparkles size={24} className="logo-icon" />
           </div>
@@ -114,7 +115,7 @@ function Navbar() {
         </Link>
 
         {/* Center Navigation & Game Selector */}
-        <div className="nav-center">
+        <div className={`nav-center ${isMobileMenuOpen ? 'show' : ''}`}>
           
           {/* Game Selector Dropdown */}
           <div 
@@ -155,6 +156,7 @@ function Navbar() {
                         setSelectedGame(game.id);
                         setGameSearch('');
                         setIsGameMenuOpen(false);
+                        setIsMobileMenuOpen(false);
                       }}
                     >
                       <div className={`game-color-dot bg-gradient-to-r ${game.color}`}></div>
@@ -173,13 +175,13 @@ function Navbar() {
           {/* Navigation Links */}
           <ul className="nav-links">
             <li>
-              <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>Keşfet</Link>
+              <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>Keşfet</Link>
             </li>
             <li>
-              <Link to="/top-mods" className={`nav-link ${location.pathname === '/top-mods' ? 'active' : ''}`}>Çok Sevilenler</Link>
+              <Link to="/top-mods" className={`nav-link ${location.pathname === '/top-mods' ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>Çok Sevilenler</Link>
             </li>
             <li>
-              <Link to="/favorites" className={`nav-link ${location.pathname === '/favorites' ? 'active' : ''}`} style={{ ...(location.pathname === '/favorites' ? { color: '#ef4444' } : {}), display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Link to="/favorites" className={`nav-link ${location.pathname === '/favorites' ? 'active' : ''}`} style={{ ...(location.pathname === '/favorites' ? { color: '#ef4444' } : {}), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsMobileMenuOpen(false)}>
                 <Heart size={16} color={location.pathname === '/favorites' ? '#ef4444' : 'currentColor'} /> Favorilerim
                 {favorites.length > 0 && (
                   <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
@@ -190,7 +192,7 @@ function Navbar() {
             </li>
             {user && (
               <li>
-                <Link to="/dashboard" className="nav-link admin-link">
+                <Link to="/dashboard" className="nav-link admin-link" onClick={() => setIsMobileMenuOpen(false)}>
                   <ShieldAlert size={16} /> Panel
                 </Link>
               </li>
@@ -262,6 +264,15 @@ function Navbar() {
             </div>
           )}
         </div>
+
+        {/* Mobile Menu Toggle Button */}
+        <button 
+          className="mobile-menu-toggle" 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label="Toggle navigation menu"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
 
       </div>
 
